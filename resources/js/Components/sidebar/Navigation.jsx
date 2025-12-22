@@ -2,7 +2,7 @@ import { usePage } from "@inertiajs/react";
 
 import SidebarLink from "@/Components/sidebar/SidebarLink";
 import Dropdown from "@/Components/sidebar/Dropdown";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, FileText } from "lucide-react";
 
 export default function NavLinks({ isSidebarOpen }) {
     const { emp_data } = usePage().props;
@@ -14,8 +14,14 @@ export default function NavLinks({ isSidebarOpen }) {
         >
             <SidebarLink
                 href={route("jorf.form")}
-                icon={<ClipboardList className="w-5 h-5" />}
+                icon={<FileText className="w-5 h-5" />}
                 label="Generate JORF"
+                isSidebarOpen={isSidebarOpen}
+            />
+            <SidebarLink
+                href={route("requestType.form")}
+                icon={<ClipboardList className="w-5 h-5" />}
+                label="Request Types"
                 isSidebarOpen={isSidebarOpen}
             />
         </nav>
