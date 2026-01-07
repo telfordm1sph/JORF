@@ -28,7 +28,7 @@ const RequestType = () => {
             requestTypes?.map((type) => ({
                 key: type.id,
                 id: type.id,
-                name: type.request_name,
+                request_name: type.request_name,
                 is_active: Boolean(type.is_active),
                 created_at: type.created_at,
                 updated_at: type.updated_at,
@@ -111,9 +111,9 @@ const RequestType = () => {
 
         {
             title: "Name",
-            dataIndex: "name",
-            key: "name",
-            sorter: (a, b) => a.name.localeCompare(b.name),
+            dataIndex: "request_name",
+            key: "request_name",
+            sorter: (a, b) => a.request_name.localeCompare(b.request_name),
         },
         {
             title: "Status",

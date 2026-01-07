@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class JorfAttachments extends Model
 {
-    use SoftDeletes;
+    // use SoftDeletes;
 
     protected $table = 'jorf_attachments';
 
@@ -15,7 +15,7 @@ class JorfAttachments extends Model
 
     public $timestamps = false;
 
-    protected $dates = ['uploaded_at', 'deleted_at'];
+    protected $dates = ['uploaded_at'];
 
     protected $fillable = [
         'jorf_id',

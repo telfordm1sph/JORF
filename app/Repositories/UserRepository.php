@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Repositories;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class UserRepository
+{
+
+    /**
+     * Check if user is a department head
+     */
+    public function isDepartmentHead(string $userId): bool
+    {
+        try {
+            $result = DB::connection('masterlist')->select("
+                SELECT COUNT(*) as count 
+                FROM employee_masterlist 
+                WHERE APPROVER2 = ? OR APPROVER3 = ?
+            ", [$userId, $userId]);
+
+            return ($result[0]->count ?? 0) > 0;
+        } catch (\Exception $e) {
+            Log::error("Failed to check department head status for user {$userId}: " . $e->getMessage());
+            return false;
+        }
+    }
+}

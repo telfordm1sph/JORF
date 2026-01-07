@@ -6,27 +6,32 @@ class Status
 {
     // Status values
     const PENDING = 1;
-    const ONGOING = 2;
-    const DONE = 3;
-    const CANCELLED = 4;
+    const APPROVED = 2;
+    const ONGOING = 3;
+    const DONE = 4;
+    const CANCELLED = 5;
+    const DISAPPROVED = 6;
 
     // Status labels
     const LABELS = [
         self::PENDING => 'Pending',
+        self::APPROVED => 'Approved',
         self::ONGOING => 'Ongoing',
         self::DONE => 'Done',
         self::CANCELLED => 'Cancelled',
+        self::DISAPPROVED => 'Disapproved',
     ];
-
-
 
     // Status colors for UI
     const COLORS = [
-        self::PENDING => 'green',
-        self::ONGOING => 'blue',
-        self::DONE => 'gray',
-        self::CANCELLED => 'red',
+        self::PENDING      => 'gold',
+        self::APPROVED     => 'lime',
+        self::ONGOING      => 'blue',
+        self::DONE         => 'green',
+        self::CANCELLED    => 'volcano',
+        self::DISAPPROVED  => 'red',
     ];
+
 
     /**
      * Get status label by value

@@ -22,12 +22,11 @@ const RequestTypeDrawer = ({
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
 
-    // Reset form when drawer opens/closes or when requestType changes
     useEffect(() => {
         if (visible) {
             if (mode === "edit" && requestType) {
                 form.setFieldsValue({
-                    name: requestType.name,
+                    request_name: requestType.request_name,
                     is_active: requestType.is_active,
                 });
             } else {
