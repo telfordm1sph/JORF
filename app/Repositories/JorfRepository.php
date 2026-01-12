@@ -5,7 +5,11 @@ namespace App\Repositories;
 use App\Constants\Status;
 use App\Models\Jorf;
 use App\Models\JorfAttachments;
+use App\Models\JorfLogs;
 use App\Models\RequestType;
+use App\Models\User;
+use App\Services\JorfStatusService;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class JorfRepository
 {
@@ -128,5 +132,97 @@ class JorfRepository
 
             ->orderBy('uploaded_at', 'desc')
             ->get();
+    }
+
+    public function getJorfById(string $jorfId)
+    {
+        return Jorf::where('jorf_id', $jorfId)->firstOrFail();
+    }
+    public function getJorfLogs(string $jorf_id, int $perPage = 5): LengthAwarePaginator
+    {
+        $logs = JorfLogs::with('actor')
+            ->where('loggable_type', Jorf::class)
+            ->where('loggable_id', $jorf_id)
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        $userFields = ['employid'];
+        $statusFields = ['status']; // numeric or string status fields
+
+        // Collect EMPLOYIDs from old_values and new_values
+        $empIds = [];
+        foreach ($logs->items() as $log) {
+            $oldValues = $log->old_values ?? [];
+            $newValues = $log->new_values ?? [];
+            foreach ($userFields as $field) {
+                if (!empty($oldValues[$field])) $empIds[] = $oldValues[$field];
+                if (!empty($newValues[$field])) $empIds[] = $newValues[$field];
+            }
+        }
+
+        $users = User::whereIn('EMPLOYID', array_unique($empIds))
+            ->pluck('EMPNAME', 'EMPLOYID')
+            ->toArray();
+
+        $logs->getCollection()->transform(function ($log) use ($users, $userFields, $statusFields) {
+            $oldValues = $log->old_values ?? [];
+            $newValues = $log->new_values ?? [];
+            $metadata  = $log->metadata ?? [];
+
+            // Map EMPLOYID to names
+            foreach ($userFields as $field) {
+                if (!empty($oldValues[$field]) && isset($users[$oldValues[$field]])) {
+                    $oldValues[$field] = $users[$oldValues[$field]];
+                }
+                if (!empty($newValues[$field]) && isset($users[$newValues[$field]])) {
+                    $newValues[$field] = $users[$newValues[$field]];
+                }
+            }
+
+            // Map status to label + color
+            foreach ($statusFields as $field) {
+                // Old status
+                if (isset($oldValues[$field])) {
+                    $oldStatusId = is_numeric($oldValues[$field])
+                        ? (int) $oldValues[$field]
+                        : JorfStatusService::getStatusIdByLabel($oldValues[$field]);
+
+                    $oldValues[$field] = [
+                        'label' => JorfStatusService::getStatusLabelById($oldStatusId),
+                        'color' => JorfStatusService::getStatusColorById($oldStatusId),
+                    ];
+                }
+
+                // New status
+                if (isset($newValues[$field])) {
+                    $newStatusId = is_numeric($newValues[$field])
+                        ? (int) $newValues[$field]
+                        : JorfStatusService::getStatusIdByLabel($newValues[$field]);
+
+                    $newValues[$field] = [
+                        'label' => JorfStatusService::getStatusLabelById($newStatusId),
+                        'color' => JorfStatusService::getStatusColorById($newStatusId),
+                    ];
+                }
+            }
+
+            return [
+                'ID'          => $log->id,
+                'ACTION_TYPE' => $log->action_type,
+                'ACTION_BY'   => $log->actor->empname ?? 'N/A',
+                'ACTION_AT'   => $log->action_at,
+                'OLD_VALUES'  => $oldValues,
+                'NEW_VALUES'  => $newValues,
+                'REMARKS'     => $log->remarks,
+                'METADATA'    => $metadata,
+            ];
+        });
+
+        return $logs;
+    }
+
+    public function updateJorf(Jorf $jorf, array $data): bool
+    {
+        return $jorf->update($data);
     }
 }

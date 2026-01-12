@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Card, Table, Input, Tag } from "antd";
+import { Card, Table, Input, Tag, message } from "antd";
 import StatCard from "@/Components/StatCard";
 import {
     SearchOutlined,
@@ -48,16 +48,75 @@ const JorfTable = () => {
     } = useJorfTable({ initialFilters, pagination });
     const { drawerOpen, selectedItem, openDrawer, closeDrawer } = useDrawer();
     const [attachments, setAttachments] = useState([]);
+    const [availableAction, setAvailableAction] = useState(null);
+    const [jorfLogs, setJorfLogs] = useState([]);
     const renderValue = (value) =>
         value === null || value === "" ? "-" : value;
     const fetchAttachments = async (jorfId) => {
         try {
             const res = await axios.get(route("jorf.attachments", jorfId));
+            const availableActRes = await axios.get(
+                route("jorf.getActions", jorfId)
+            );
+            console.log("ACtion", availableActRes);
+            setAvailableAction(availableActRes.data.actions || null);
+
             console.log("Fetched attachments:", res.data);
             setAttachments(res.data.attachments || []);
         } catch (err) {
             console.error("Error fetching attachments", err);
             setAttachments([]);
+        }
+    };
+    const fetchJorfLogs = async (jorfId) => {
+        if (!jorfId) {
+            console.warn("JORF ID is required to fetch logs");
+            setJorfLogs([]);
+            return;
+        }
+
+        try {
+            const res = await axios.get(route("jorf.logs", jorfId));
+
+            // Ensure we have the data array
+            const logs = Array.isArray(res.data?.data) ? res.data.data : [];
+            console.log("JORF logs:", logs);
+
+            setJorfLogs(logs);
+        } catch (err) {
+            console.error("Error fetching JORF logs:", err);
+            setJorfLogs([]);
+        }
+    };
+
+    const handleJorfAction = async ({ action, item, remarks }) => {
+        // console.log("Action triggered:", action, item, remarks);
+        if (!remarks?.trim()) {
+            message.error("Please enter remarks.");
+            return;
+        }
+
+        const payload = {
+            jorf_id: item.jorf_id,
+            action,
+            remarks,
+        };
+
+        try {
+            const res = await axios.post(route("jorf.actions"), payload);
+
+            if (res.data.success) {
+                message.success(res.data.message);
+                window.location.reload();
+            } else {
+                console.log(res.data.message);
+
+                message.error(res.data.message);
+            }
+        } catch (err) {
+            console.log(err.message);
+
+            message.error("Failed to update JORF.");
         }
     };
 
@@ -245,6 +304,7 @@ const JorfTable = () => {
                             console.log("Row clicked:", record.jorf_id);
                             openDrawer(record);
                             await fetchAttachments(record.jorf_id);
+                            await fetchJorfLogs(record.jorf_id);
                         },
                         style: { cursor: "pointer" },
                     })}
@@ -258,6 +318,9 @@ const JorfTable = () => {
                 fieldGroups={jorfFieldGroups}
                 title={(item) => `JORF Details: ${item?.jorf_id}`}
                 headerBadges={headerBadges}
+                availableAction={availableAction}
+                action={handleJorfAction}
+                jorfLogs={jorfLogs}
             />
         </AuthenticatedLayout>
     );

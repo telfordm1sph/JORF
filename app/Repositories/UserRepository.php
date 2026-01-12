@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Models\Masterlist;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,5 +26,14 @@ class UserRepository
             Log::error("Failed to check department head status for user {$userId}: " . $e->getMessage());
             return false;
         }
+    }
+    public function findUserById(string $empId): ?object
+    {
+        return Masterlist::where('EMPLOYID', $empId)
+            ->select([
+                'EMPLOYID as emp_id',
+                'EMPNAME as empname',
+            ])
+            ->first();
     }
 }

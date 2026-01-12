@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Constants\Status;
 use App\Models\Masterlist;
 use App\Repositories\JorfRepository;
+use App\Repositories\UserRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -12,10 +13,12 @@ use Illuminate\Support\Str;
 class JorfService
 {
     protected JorfRepository $jorfRepository;
+    protected UserRepository $userRepo;
 
-    public function __construct(JorfRepository $jorfRepository)
+    public function __construct(JorfRepository $jorfRepository, UserRepository $userRepo)
     {
         $this->jorfRepository = $jorfRepository;
+        $this->userRepo = $userRepo;
     }
 
     public function getRequestType()
@@ -150,20 +153,36 @@ class JorfService
         $userRoles    = $empData['user_roles'] ?? '';
         $systemRoles  = $empData['system_roles'] ?? [];
 
-        // Department Head → only see requestors under them
+        // ---- Department Head ----
         if ($userRoles === 'DEPARTMENT_HEAD' && $currentEmpId) {
-            $requestorIds = Masterlist::where('APPROVER2', $currentEmpId)
-                ->orWhere('APPROVER3', $currentEmpId)
+
+            $requestorIds = Masterlist::where(function ($q) use ($currentEmpId) {
+                $q->where('APPROVER2', $currentEmpId)
+                    ->orWhere('APPROVER3', $currentEmpId);
+            })
                 ->pluck('EMPLOYID');
-            $query->whereIn('employid', $requestorIds);
+
+            if ($requestorIds->isEmpty()) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            return $query->whereIn('employid', $requestorIds);
         }
-        // Facilities → see only status != 1
-        elseif (in_array('Facilities', $systemRoles)) {
-            $query->where('status', '!=', 1);
+        // ---- Facilities ----
+        if (in_array('Facilities', $systemRoles)) {
+            return $query->where('status', '!=', 1);
         }
 
-        return $query;
+        // ---- Requestor (OWN records only) ----
+        if (in_array('Requestor', $systemRoles) && $currentEmpId) {
+            return $query->where('employid', $currentEmpId);
+        }
+
+
+        // ---- Default (others) ----
+        return $query->where('status', '!=', 1);
     }
+
 
 
 
@@ -183,5 +202,135 @@ class JorfService
                 'uploaded_at' => $attachment->uploaded_at,
             ];
         })->toArray();
+    }
+    public function getJorfLogs(string $jorfId, int $perPage = 5)
+    {
+        $logs = $this->jorfRepository->getJorfLogs($jorfId, $perPage);
+
+        $logs->getCollection()->transform(function ($log) {
+            $oldStatus = $log['OLD_VALUES']['status']['label'] ?? null;
+            $oldColor  = $log['OLD_VALUES']['status']['color'] ?? null;
+
+            $newStatus = $log['NEW_VALUES']['status']['label'] ?? null;
+            $newColor  = $log['NEW_VALUES']['status']['color'] ?? null;
+
+            $log['OLD_STATUS_LABEL'] = $oldStatus;
+            $log['OLD_STATUS_COLOR'] = $oldColor;
+            $log['NEW_STATUS_LABEL'] = $newStatus;
+            $log['NEW_STATUS_COLOR'] = $newColor;
+
+            return $log;
+        });
+
+        return $logs;
+    }
+
+
+    public function getAvailableActions($jorfId, array $empData): array
+    {
+        $jorf = $this->jorfRepository->getJorfById($jorfId);
+        $currentEmpId = $empData['emp_id'] ?? null;
+        $userRoles = $empData['user_roles'] ?? '';
+        $systemRoles = $empData['system_roles'] ?? [];
+        $status = $jorf->status;
+
+        $actions = [];
+
+        // Check if user is the requestor
+        $isRequestor = $jorf->employid === $currentEmpId;
+
+        // Check if user is the department head of this requestor
+        $isDepartmentHead = false;
+        if ($userRoles === 'DEPARTMENT_HEAD') {
+            $requestorIds = Masterlist::where('APPROVER2', $currentEmpId)
+                ->orWhere('APPROVER3', $currentEmpId)
+                ->pluck('EMPLOYID');
+            $isDepartmentHead = $requestorIds->contains($jorf->employid);
+        }
+
+        // Requestor actions
+        if ($isRequestor) {
+            if ($status == Status::PENDING) {
+                // $actions[] = 'edit';
+                $actions[] = 'CANCEL';
+            }
+        }
+
+        // Department Head actions
+        if ($isDepartmentHead) {
+            if ($status == Status::PENDING) {
+                // Don't allow dept head to approve their own request
+                if (!$isRequestor) {
+                    $actions[] = 'APPROVE';
+                    $actions[] = 'DISAPPROVE';
+                }
+            }
+        }
+
+        // Add view for anyone who has access
+        if ($isRequestor || $isDepartmentHead) {
+            $actions[] = 'VIEW';
+        }
+
+        // Remove duplicates and return
+        return array_values(array_unique($actions));
+    }
+    public function jorfAction(
+        string $jorfId,
+        string $userId,
+        string $actionType = 'APPROVE',
+        string $remarks = ''
+    ): bool {
+        $actionType = strtoupper($actionType);
+
+        // Only allow valid actions
+        if (!in_array($actionType, ['APPROVE', 'DISAPPROVE'])) {
+            throw new \InvalidArgumentException('Invalid action type');
+        }
+
+        // Require remarks for certain actions
+        if (empty($remarks)) {
+            throw new \InvalidArgumentException('Remarks are required for this action.');
+        }
+
+        return DB::transaction(function () use ($jorfId, $userId, $actionType, $remarks) {
+
+            $jorf = $this->jorfRepository->getJorfById($jorfId);
+            if (!$jorf) return false;
+
+            // Map action to status
+            $statusMap = [
+                'APPROVE'    => 2,
+                'DISAPPROVE' => 6,
+            ];
+
+            $newStatus = $statusMap[$actionType] ?? null;
+            if (is_null($newStatus)) {
+                throw new \InvalidArgumentException("No status mapping found for action $actionType");
+            }
+
+            // Only update actual DB columns
+            $updateData = [
+                'status' => $newStatus,
+            ];
+
+            // Attach in-memory properties for logging
+            $jorf->currentAction = $actionType; // picked up by Loggable
+            $jorf->remarks = $remarks;       // picked up by Loggable
+
+            // Perform the update
+            $this->jorfRepository->updateJorf($jorf, $updateData);
+            //    $jorf->logRemarks = $remarks;       // picked up by Loggable
+            // Optional: send notification
+            $actorUser = $this->userRepo->findUserById($userId);
+            $actorData = [
+                'emp_id' => $userId,
+                'name'   => $actorUser->empname ?? 'Unknown',
+            ];
+
+            // $this->notificationService->notifyTicketAction($jorf, $actionType, $actorData);
+
+            return true;
+        });
     }
 }

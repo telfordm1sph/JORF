@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 
-use App\Models\JorfLog;
+use App\Models\JorfLogs;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -55,7 +55,7 @@ trait Loggable
             })->toArray();
         };
 
-        JorfLog::create([
+        JorfLogs::create([
             'loggable_type' => get_class($this),
             'loggable_id'   => $this->jorf_id ?? $this->id,
             'action_type'   => $actionType,
@@ -68,6 +68,6 @@ trait Loggable
 
     public function jorfLogs()
     {
-        return $this->morphMany(JorfLog::class, 'loggable');
+        return $this->morphMany(JorfLogs::class, 'loggable');
     }
 }

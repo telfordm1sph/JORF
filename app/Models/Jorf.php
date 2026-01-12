@@ -11,6 +11,8 @@ class Jorf extends Model
     use HasFactory;
     use Loggable;
     protected $table = 'jorf_table';
+    protected $primaryKey = 'id';
+    public string|null $currentAction = null;
 
     protected $fillable = [
         'jorf_id',
@@ -24,7 +26,6 @@ class Jorf extends Model
         'remarks',
         'status',
         'cost_amount',
-        'handled_by',
         'handled_at',
     ];
 

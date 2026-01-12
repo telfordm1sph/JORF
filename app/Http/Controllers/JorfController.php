@@ -90,8 +90,78 @@ class JorfController extends Controller
 
         return response()->json(['attachments' => $attachments]);
     }
+    public function logs(string $jorfId)
+    {
+        $logs = $this->jorfService->getJorfLogs($jorfId, 5);
+
+        return response()->json([
+            'success' => true,
+            'data' => $logs->items(),
+            'pagination' => [
+                'current_page' => $logs->currentPage(),
+                'last_page'    => $logs->lastPage(),
+                'has_more'     => $logs->hasMorePages(),
+            ],
+        ]);
+    }
+    public function getJorfActions(string $jorfId)
+    {
+        try {
+            $empData = session('emp_data');
 
 
+            $actions = $this->jorfService->getAvailableActions($jorfId, $empData);
+
+            return response()->json([
+                'success' => true,
+                'actions' => $actions,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'JORF not found',
+            ], 404);
+        }
+    }
+    public function jorfAction(Request $request)
+    {
+        // dd($request->all());
+        $empData = session('emp_data');
+        $jorfId = $request->input('jorf_id');
+        $remarks = $request->input('remarks');
+        $actionType = strtoupper($request->input('action'));
+
+        $request->merge([
+            'action' => $actionType
+        ]);
+
+        $request->validate([
+            'jorf_id' => 'required|string',
+            'action' => 'required|string|in:APPROVE,DISAPPROVE',
+            'remarks' => 'nullable|string',
+        ]);
+
+        try {
+            $success = $this->jorfService->jorfAction($jorfId, $empData['emp_id'], $actionType, $remarks);
+
+            if ($success) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Jorf {$actionType} successfully."
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => "Jorf not found."
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update jorf: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     /**
      * Download attachment
      */

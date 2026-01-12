@@ -20,6 +20,12 @@ Route::prefix($app_name)
         Route::get('/jorf/{jorfId}/attachments', [JorfController::class, 'getAttachments'])
             ->name('jorf.attachments');
 
+        Route::get('/jorf/logs/{jorfId}', [JorfController::class, 'logs'])
+            ->name('jorf.logs');
         Route::get('/jorf/attachments/download/{id}', [JorfController::class, 'downloadAttachment'])
             ->name('jorf.attachments.download');
+
+        Route::get('/jorf/{jorfId}/actions', [JorfController::class, 'getJorfActions'])->name('jorf.getActions');
+
+        Route::post('/jorf/action', [JorfController::class, 'jorfAction'])->name('jorf.actions');
     });
