@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Constants\Status;
 use App\Models\Masterlist;
+use App\Models\User;
 use App\Repositories\JorfRepository;
 use App\Repositories\UserRepository;
 use Illuminate\Http\Request;
@@ -120,12 +121,36 @@ class JorfService
         $countQuery->getQuery()->orders = []; // remove orderBy for count query
         $statusCounts = $this->jorfRepository->getStatusCountsFromQuery($countQuery);
 
+        // ----- Fetch all handled_by employee names in one query -----
+        $empIds = collect($paginated->items())
+            ->pluck('handled_by')
+            ->filter() // remove nulls
+            ->map(fn($ids) => explode(',', $ids)) // split comma-separated IDs
+            ->flatten()
+            ->unique()
+            ->toArray();
+
+        $users = [];
+        if (!empty($empIds)) {
+            $users = User::whereIn('EMPLOYID', $empIds)
+                ->pluck('EMPNAME', 'EMPLOYID')
+                ->toArray();
+        }
+
         // ----- Prepare table data -----
-        $data = collect($paginated->items())->map(function ($jorf) {
+        $data = collect($paginated->items())->map(function ($jorf) use ($users) {
+            // Map handled_by IDs to names
+            $handledByNames = null;
+            if (!empty($jorf->handled_by)) {
+                $ids = explode(',', $jorf->handled_by);
+                $handledByNames = implode('| ', array_map(fn($id) => $users[$id] ?? $id, $ids));
+            }
+
             return [
                 ...$jorf->toArray(),
-                'status_label' => Status::getLabel($jorf->status),
-                'status_color' => Status::getColor($jorf->status),
+                'status_label'    => Status::getLabel($jorf->status),
+                'status_color'    => Status::getColor($jorf->status),
+                'handled_by_name' => $handledByNames,
             ];
         });
 
@@ -169,22 +194,25 @@ class JorfService
             return $query->whereIn('employid', $requestorIds);
         }
         // ---- Facilities ----
-        if (in_array('Facilities', $systemRoles)) {
+        if (in_array('Facilities_Coordinator', $systemRoles)) {
             return $query->where('status', '!=', 1);
         }
+        if (in_array('Facilities', $systemRoles)) {
+            return $query
+                ->whereNotIn('status', [1, 2])
+                ->whereRaw('FIND_IN_SET(?, handled_by)', [$currentEmpId]);
+        }
+
 
         // ---- Requestor (OWN records only) ----
-        if (in_array('Requestor', $systemRoles) && $currentEmpId) {
+        if ($currentEmpId) {
             return $query->where('employid', $currentEmpId);
         }
 
 
         // ---- Default (others) ----
-        return $query->where('status', '!=', 1);
+        return $query->whereRaw('1 = 0');
     }
-
-
-
 
     public function getAttachments(string $jorfId): array
     {
@@ -267,6 +295,28 @@ class JorfService
             }
         }
 
+        if ($systemRoles && in_array('Facilities_Coordinator', $systemRoles) && !$isRequestor) {
+            // Facilities actions
+            if (in_array($status, [Status::APPROVED])) {
+                $actions[] = 'ONGOING';
+                // $actions[] = 'DONE';
+                $actions[] = 'CANCEL';
+            } elseif (in_array($status, [Status::ONGOING])) {
+                $actions[] = 'ONGOING';
+                $actions[] = 'DONE';
+            }
+        }
+        if ($systemRoles && in_array('Facilities', $systemRoles) && !$isRequestor) {
+            // Facilities Coordinator actions
+            if (in_array($status, [Status::ONGOING])) {
+                $actions[] = 'DONE';
+            } else {
+                $actions[] = 'VIEW';
+            }
+        }
+        if ($isRequestor && in_array($status, [Status::DONE])) {
+            $actions[] = 'ACKNOWLEDGE';
+        }
         // Add view for anyone who has access
         if ($isRequestor || $isDepartmentHead) {
             $actions[] = 'VIEW';
@@ -279,12 +329,16 @@ class JorfService
         string $jorfId,
         string $userId,
         string $actionType = 'APPROVE',
-        string $remarks = ''
+        string $remarks = '',
+        ?int $costAmount = null,
+        ?float $rating = null,
+        ?array $handledBy = null
+
     ): bool {
         $actionType = strtoupper($actionType);
 
         // Only allow valid actions
-        if (!in_array($actionType, ['APPROVE', 'DISAPPROVE'])) {
+        if (!in_array($actionType, ['APPROVE', 'DISAPPROVE', 'ONGOING', 'DONE', 'CANCEL', 'ACKNOWLEDGE'])) {
             throw new \InvalidArgumentException('Invalid action type');
         }
 
@@ -293,7 +347,7 @@ class JorfService
             throw new \InvalidArgumentException('Remarks are required for this action.');
         }
 
-        return DB::transaction(function () use ($jorfId, $userId, $actionType, $remarks) {
+        return DB::transaction(function () use ($jorfId, $userId, $actionType, $remarks, $costAmount, $rating, $handledBy) {
 
             $jorf = $this->jorfRepository->getJorfById($jorfId);
             if (!$jorf) return false;
@@ -301,26 +355,41 @@ class JorfService
             // Map action to status
             $statusMap = [
                 'APPROVE'    => 2,
-                'DISAPPROVE' => 6,
+                'ONGOING'    => 3,
+                'DONE'       => 4,
+                'ACKNOWLEDGE' => 5,
+                'CANCEL'     => 6,
+                'DISAPPROVE' => 7,
             ];
 
             $newStatus = $statusMap[$actionType] ?? null;
+            $updateData = [
+                'status' => $newStatus,
+            ];
             if (is_null($newStatus)) {
                 throw new \InvalidArgumentException("No status mapping found for action $actionType");
             }
 
-            // Only update actual DB columns
-            $updateData = [
-                'status' => $newStatus,
-            ];
+            if ($actionType === 'ONGOING' || $actionType === 'DONE') {
+                if (!is_null($costAmount)) $updateData['cost_amount'] = $costAmount;
 
+                if (!is_null($handledBy) && !empty($handledBy)) {
+
+                    $updateData['handled_by'] = implode(',', $handledBy);
+                    $updateData['handled_at'] = now();
+                }
+            }
+            if ($actionType === 'ACKNOWLEDGE') {
+                if (!is_null($rating)) $updateData['rating'] = $rating;
+            }
+            // dd($updateData);
             // Attach in-memory properties for logging
-            $jorf->currentAction = $actionType; // picked up by Loggable
-            $jorf->remarks = $remarks;       // picked up by Loggable
+            $jorf->currentAction = $actionType;
+            $jorf->remarks = $remarks;
 
             // Perform the update
             $this->jorfRepository->updateJorf($jorf, $updateData);
-            //    $jorf->logRemarks = $remarks;       // picked up by Loggable
+
             // Optional: send notification
             $actorUser = $this->userRepo->findUserById($userId);
             $actorData = [

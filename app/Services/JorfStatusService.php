@@ -10,29 +10,30 @@ class JorfStatusService
     public const STATUS_LABELS = [
         1 => 'Pending',
         2 => 'Approved',
-        // 3 => 'Ongoing',
-        // 4 => 'Resolved',
-        // 5 => 'Closed',
-        6 => 'Disapproved',
-        7 => 'Cancelled',
+        3 => 'Ongoing',
+        4 => 'Done',
+        5 => 'Acknowledged',
+        6 => 'Canceled',
+        7 => 'Disapproved',
+
     ];
 
     public const STATUS_COLORS = [
         1 => 'blue',
         2 => 'blue',
-        // 3 => 'cyan',
-        // 4 => 'yellow',
-        // 5 => 'green',
-        6 => 'red',
+        3 => 'cyan',
+        4 => 'green',
+        5 => 'green',
+        6 => 'volcano',
         7 => 'red',
+
+
     ];
 
     // Existing methods for Jorf object
     public static function getStatusLabel(Jorf $jorf): string
     {
-        if ($jorf->status == 1 && $jorf->created_at->diffInMinutes(now()) > 30) {
-            return 'Critical';
-        }
+
         return self::STATUS_LABELS[$jorf->status] ?? '-';
     }
 

@@ -1,33 +1,15 @@
 import React, { useMemo, useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Card, Table, Input, Tag, message } from "antd";
-import StatCard from "@/Components/StatCard";
-import {
-    SearchOutlined,
-    AppstoreOutlined,
-    CheckCircleOutlined,
-    CloseCircleOutlined,
-    SyncOutlined,
-    ClockCircleOutlined,
-    StopOutlined,
-    LikeOutlined,
-    DislikeOutlined,
-} from "@ant-design/icons";
+import { Card, Table, Tag, message } from "antd";
+
+import TableToolbar from "@/Components/TableToolbar";
 import { usePage } from "@inertiajs/react";
 import useJorfTable from "@/Hooks/useJorfTable";
 import JorfDrawer from "@/Components/jorf/JorfDrawer";
 import { useDrawer } from "@/Hooks/useDrawer";
 import axios from "axios";
-
-const iconMap = {
-    All: AppstoreOutlined,
-    Approved: LikeOutlined,
-    Disapproved: DislikeOutlined,
-    Cancelled: StopOutlined,
-    Done: CheckCircleOutlined,
-    Ongoing: SyncOutlined,
-    Pending: ClockCircleOutlined,
-};
+import dayjs from "dayjs";
+import StatCard from "@/Components/StatCard";
 
 const JorfTable = () => {
     const {
@@ -35,64 +17,103 @@ const JorfTable = () => {
         pagination,
         statusCounts,
         filters: initialFilters,
+        emp_data,
     } = usePage().props;
     console.log(usePage().props);
 
     const {
         loading,
         searchValue,
-        activeFilter,
-        handleStatusFilter,
+        statusFilter,
+        handleStatusChange,
         handleTableChange,
         handleSearch,
     } = useJorfTable({ initialFilters, pagination });
+
     const { drawerOpen, selectedItem, openDrawer, closeDrawer } = useDrawer();
     const [attachments, setAttachments] = useState([]);
     const [availableAction, setAvailableAction] = useState(null);
     const [jorfLogs, setJorfLogs] = useState([]);
+    const [logsCurrentPage, setLogsCurrentPage] = useState(1);
+    const [logsHasMore, setLogsHasMore] = useState(false);
+    const [logsLoading, setLogsLoading] = useState(false);
     const renderValue = (value) =>
         value === null || value === "" ? "-" : value;
+
     const fetchAttachments = async (jorfId) => {
         try {
             const res = await axios.get(route("jorf.attachments", jorfId));
             const availableActRes = await axios.get(
                 route("jorf.getActions", jorfId)
             );
-            console.log("ACtion", availableActRes);
             setAvailableAction(availableActRes.data.actions || null);
-
-            console.log("Fetched attachments:", res.data);
             setAttachments(res.data.attachments || []);
         } catch (err) {
             console.error("Error fetching attachments", err);
             setAttachments([]);
         }
     };
-    const fetchJorfLogs = async (jorfId) => {
+
+    const fetchJorfLogs = async (jorfId, page = 1) => {
         if (!jorfId) {
             console.warn("JORF ID is required to fetch logs");
             setJorfLogs([]);
             return;
         }
 
+        setLogsLoading(true);
         try {
-            const res = await axios.get(route("jorf.logs", jorfId));
+            const res = await axios.get(route("jorf.logs", jorfId), {
+                params: { page },
+            });
 
-            // Ensure we have the data array
-            const logs = Array.isArray(res.data?.data) ? res.data.data : [];
-            console.log("JORF logs:", logs);
+            const newLogs = Array.isArray(res.data?.data) ? res.data.data : [];
 
-            setJorfLogs(logs);
+            if (page === 1) {
+                setJorfLogs(newLogs);
+            } else {
+                setJorfLogs((prev) => [...prev, ...newLogs]);
+            }
+
+            setLogsCurrentPage(page);
+            setLogsHasMore(res.data?.pagination?.has_more || false);
         } catch (err) {
             console.error("Error fetching JORF logs:", err);
-            setJorfLogs([]);
+            if (page === 1) {
+                setJorfLogs([]);
+            }
+        } finally {
+            setLogsLoading(false);
         }
     };
 
-    const handleJorfAction = async ({ action, item, remarks }) => {
-        // console.log("Action triggered:", action, item, remarks);
+    const handleLoadMoreLogs = () => {
+        if (selectedItem?.jorf_id) {
+            fetchJorfLogs(selectedItem.jorf_id, logsCurrentPage + 1);
+        }
+    };
+    const handleJorfAction = async ({
+        action,
+        item,
+        remarks,
+        costAmount,
+        rating,
+        handledBy,
+    }) => {
         if (!remarks?.trim()) {
             message.error("Please enter remarks.");
+            return;
+        }
+        if (!costAmount && (action === "ONGOING" || action === "DONE")) {
+            message.error("Please enter cost amount.");
+            return;
+        }
+        if (!handledBy && (action === "ONGOING" || action === "DONE")) {
+            message.error("Please enter Facilities Employee(s).");
+            return;
+        }
+        if (!rating && action === "ACKNOWLEDGE") {
+            message.error("Please enter rating.");
             return;
         }
 
@@ -100,6 +121,9 @@ const JorfTable = () => {
             jorf_id: item.jorf_id,
             action,
             remarks,
+            cost_amount: costAmount,
+            rating,
+            handled_by: handledBy,
         };
 
         try {
@@ -109,13 +133,9 @@ const JorfTable = () => {
                 message.success(res.data.message);
                 window.location.reload();
             } else {
-                console.log(res.data.message);
-
                 message.error(res.data.message);
             }
         } catch (err) {
-            console.log(err.message);
-
             message.error("Failed to update JORF.");
         }
     };
@@ -159,7 +179,12 @@ const JorfTable = () => {
             title: "Cost Amount",
             dataIndex: "cost_amount",
             key: "cost_amount",
-            render: renderValue,
+            render: (value) =>
+                value
+                    ? `₱${parseFloat(value)
+                          .toFixed(2)
+                          .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`
+                    : "-",
         },
         {
             title: "Handled By",
@@ -171,14 +196,18 @@ const JorfTable = () => {
             title: "Handled At",
             dataIndex: "handled_at",
             key: "handled_at",
-            render: renderValue,
+            render: (value) =>
+                value ? dayjs(value).format("MMM D, YYYY h:mm A") : "-",
         },
         {
             title: "Status",
             key: "status",
-            render: (_, record) => record.status_label,
+            render: (_, record) => (
+                <Tag color={record.status_color}>{record.status_label}</Tag>
+            ),
         },
     ];
+
     const headerBadges = [
         {
             key: "status_label",
@@ -186,7 +215,6 @@ const JorfTable = () => {
             dataIndex: "status_label",
             render: (value) => {
                 const badgeColor = statusCounts[value]?.color || "default";
-
                 return <Tag color={badgeColor}>{value}</Tag>;
             },
         },
@@ -227,7 +255,14 @@ const JorfTable = () => {
                     key: "cost_amount",
                     label: "Cost Amount",
                     dataIndex: "cost_amount",
+                    render: (value) => {
+                        if (value == null) return "Not Specified";
+                        return `₱ ${value
+                            .toFixed(2)
+                            .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+                    },
                 },
+                { key: "rating", label: "Rating", dataIndex: "rating" },
             ],
         },
         {
@@ -235,14 +270,16 @@ const JorfTable = () => {
             column: 2,
             fields: [
                 {
-                    key: "handled_by",
+                    key: "handled_by_name",
                     label: "Handled By",
-                    dataIndex: "handled_by",
+                    dataIndex: "handled_by_name",
                 },
                 {
                     key: "handled_at",
                     label: "Handled At",
                     dataIndex: "handled_at",
+                    render: (value) =>
+                        value ? dayjs(value).format("MMM D, YYYY h:mm A") : "-",
                 },
             ],
         },
@@ -261,34 +298,20 @@ const JorfTable = () => {
 
     return (
         <AuthenticatedLayout>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
-                {Object.entries(statusCounts).map(([title, data]) => {
-                    const Icon = iconMap[title] || AppstoreOutlined;
-                    return (
-                        <StatCard
-                            key={title}
-                            title={title}
-                            value={data.count}
-                            color={data.color}
-                            icon={Icon}
-                            onClick={handleStatusFilter}
-                            isActive={activeFilter === title}
-                            filterType={title}
-                        />
-                    );
-                })}
-            </div>
+            {/* Mini status overview cards */}
+            <StatCard stats={statusCounts} />
 
-            <Card>
-                <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
-                    <Input
-                        placeholder="Search JORF..."
-                        value={searchValue}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        allowClear
-                        prefix={<SearchOutlined />}
-                        style={{ width: 256 }}
-                        size="middle"
+            {/* Search and filter toolbar */}
+
+            {/* Main data table */}
+            <Card style={{ marginTop: 16 }}>
+                <div>
+                    <TableToolbar
+                        searchValue={searchValue}
+                        onSearch={handleSearch}
+                        statusFilter={statusFilter}
+                        onStatusChange={handleStatusChange}
+                        statusCounts={statusCounts}
                     />
                 </div>
                 <Table
@@ -301,7 +324,6 @@ const JorfTable = () => {
                     onChange={handleTableChange}
                     onRow={(record) => ({
                         onClick: async () => {
-                            console.log("Row clicked:", record.jorf_id);
                             openDrawer(record);
                             await fetchAttachments(record.jorf_id);
                             await fetchJorfLogs(record.jorf_id);
@@ -310,6 +332,8 @@ const JorfTable = () => {
                     })}
                 />
             </Card>
+
+            {/* Drawer for JORF details */}
             <JorfDrawer
                 open={drawerOpen}
                 onClose={closeDrawer}
@@ -321,6 +345,10 @@ const JorfTable = () => {
                 availableAction={availableAction}
                 action={handleJorfAction}
                 jorfLogs={jorfLogs}
+                onLoadMoreLogs={handleLoadMoreLogs}
+                logsHasMore={logsHasMore}
+                logsLoading={logsLoading}
+                systemRoles={emp_data?.system_roles || []}
             />
         </AuthenticatedLayout>
     );

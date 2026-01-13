@@ -28,4 +28,8 @@ class UserRoleService
 
         return null;
     }
+    public function getFacilitiesEmployees(): array
+    {
+        return $this->userRepository->getFacilitiesEmployees();
+    }
 }

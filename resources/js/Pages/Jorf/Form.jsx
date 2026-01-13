@@ -1,5 +1,5 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import React from "react";
+import React, { useState } from "react";
 import { Head, usePage } from "@inertiajs/react";
 import {
     Card,
@@ -20,29 +20,35 @@ const { TextArea } = Input;
 const FormJORF = () => {
     const { requestType, emp_data } = usePage().props;
     const [form] = Form.useForm();
-
+    const [submitting, setSubmitting] = useState(false);
     const onFinish = async (values) => {
+        if (submitting) return;
+
+        setSubmitting(true);
+
         try {
             const formData = new FormData();
 
             formData.append("request_type", values.request_type);
             formData.append("request_details", values.request_details);
 
-            // Append each file
             (values.attachments || []).forEach((file) => {
                 formData.append("attachments[]", file.originFileObj);
             });
 
-            const response = await axios.post(route("jorf.store"), formData, {
+            await axios.post(route("jorf.store"), formData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                 },
             });
 
             message.success("JORF submitted successfully!");
+
+            window.location.reload();
         } catch (error) {
             console.error(error);
             message.error("Failed to submit JORF.");
+            setSubmitting(false); // re-enable if failed
         }
     };
 
@@ -135,7 +141,13 @@ const FormJORF = () => {
                     </Form.Item>
 
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" block>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            block
+                            loading={submitting}
+                            disabled={submitting}
+                        >
                             Generate
                         </Button>
                     </Form.Item>

@@ -9,8 +9,9 @@ class Status
     const APPROVED = 2;
     const ONGOING = 3;
     const DONE = 4;
-    const CANCELLED = 5;
-    const DISAPPROVED = 6;
+    const ACKNOWLEDGED = 5;
+    const CANCELLED = 6;
+    const DISAPPROVED = 7;
 
     // Status labels
     const LABELS = [
@@ -18,6 +19,7 @@ class Status
         self::APPROVED => 'Approved',
         self::ONGOING => 'Ongoing',
         self::DONE => 'Done',
+        self::ACKNOWLEDGED => 'Acknowledged',
         self::CANCELLED => 'Cancelled',
         self::DISAPPROVED => 'Disapproved',
     ];
@@ -28,6 +30,7 @@ class Status
         self::APPROVED     => 'lime',
         self::ONGOING      => 'blue',
         self::DONE         => 'green',
+        self::ACKNOWLEDGED  => 'green',
         self::CANCELLED    => 'volcano',
         self::DISAPPROVED  => 'red',
     ];

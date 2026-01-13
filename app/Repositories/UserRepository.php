@@ -18,7 +18,7 @@ class UserRepository
             $result = DB::connection('masterlist')->select("
                 SELECT COUNT(*) as count 
                 FROM employee_masterlist 
-                WHERE APPROVER2 = ? OR APPROVER3 = ?
+                WHERE ACCSTATUS = 1 AND (APPROVER2 = ? OR APPROVER3 = ?)
             ", [$userId, $userId]);
 
             return ($result[0]->count ?? 0) > 0;
@@ -35,5 +35,16 @@ class UserRepository
                 'EMPNAME as empname',
             ])
             ->first();
+    }
+    public function getFacilitiesEmployees(): array
+    {
+        return Masterlist::where('DEPARTMENT', 'Facilities')
+            ->where('ACCSTATUS', '1')
+            ->select([
+                'EMPLOYID as emp_id',
+                'EMPNAME as empname',
+            ])
+            ->get()
+            ->toArray();
     }
 }

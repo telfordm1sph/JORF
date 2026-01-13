@@ -1,0 +1,56 @@
+import React from "react";
+import { Input, Select, Space } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
+
+export default function TableToolbar({
+    searchValue,
+    onSearch,
+    statusFilter,
+    onStatusChange,
+    statusCounts = {},
+}) {
+    const statusMap = {
+        All: "all",
+        Pending: 1,
+        Approved: 2,
+        Ongoing: 3,
+        Done: 4,
+        Acknowledged: 5,
+        Canceled: 6,
+        Disapproved: 7,
+    };
+
+    // Generate options dynamically from statusCounts
+    const statusOptions = Object.keys(statusCounts).map((key) => {
+        const value = statusMap[key] ?? key; // numeric value from map or fallback
+        const count = statusCounts[key]?.count || 0;
+        const color = statusCounts[key]?.color || "inherit";
+
+        return {
+            label: `${key} (${count})`,
+            value, // numeric or "all"
+        };
+    });
+
+    return (
+        <Space size="middle" style={{ width: "100%", marginBottom: 16 }}>
+            <Input
+                placeholder="Search JORF..."
+                prefix={<SearchOutlined />}
+                value={searchValue}
+                onChange={(e) => onSearch(e.target.value)}
+                style={{ width: 300 }}
+                allowClear
+            />
+            <Select
+                value={statusFilter}
+                onChange={onStatusChange} // will receive numeric value
+                style={{ width: 180 }}
+                placeholder="Filter by status"
+                options={statusOptions}
+                showSearch
+                optionFilterProp="label"
+            />
+        </Space>
+    );
+}

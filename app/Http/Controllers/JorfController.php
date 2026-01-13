@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\JorfAttachments;
 use App\Services\JorfService;
+use App\Services\UserRoleService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -11,10 +12,12 @@ use Inertia\Response;
 class JorfController extends Controller
 {
     protected JorfService $jorfService;
+    protected UserRoleService $userRoleService;
 
-    public function __construct(JorfService $jorfService)
+    public function __construct(JorfService $jorfService, UserRoleService $userRoleService)
     {
         $this->jorfService = $jorfService;
+        $this->userRoleService = $userRoleService;
     }
 
     public function index(): Response
@@ -90,9 +93,10 @@ class JorfController extends Controller
 
         return response()->json(['attachments' => $attachments]);
     }
-    public function logs(string $jorfId)
+    public function logs(string $jorfId, Request $request)
     {
-        $logs = $this->jorfService->getJorfLogs($jorfId, 5);
+        $page = $request->get('page', 1);
+        $logs = $this->jorfService->getJorfLogs($jorfId, 5, $page);
 
         return response()->json([
             'success' => true,
@@ -100,6 +104,8 @@ class JorfController extends Controller
             'pagination' => [
                 'current_page' => $logs->currentPage(),
                 'last_page'    => $logs->lastPage(),
+                'per_page'     => $logs->perPage(),
+                'total'        => $logs->total(),
                 'has_more'     => $logs->hasMorePages(),
             ],
         ]);
@@ -129,7 +135,10 @@ class JorfController extends Controller
         $empData = session('emp_data');
         $jorfId = $request->input('jorf_id');
         $remarks = $request->input('remarks');
+        $costAmount = $request->input('cost_amount', null);
+        $rating = $request->input('rating', null);
         $actionType = strtoupper($request->input('action'));
+        $handledBy = $request->input('handled_by', []);
 
         $request->merge([
             'action' => $actionType
@@ -137,13 +146,16 @@ class JorfController extends Controller
 
         $request->validate([
             'jorf_id' => 'required|string',
-            'action' => 'required|string|in:APPROVE,DISAPPROVE',
+            'action' => 'required|string|in:APPROVE,DISAPPROVE,ONGOING,DONE,CANCEL,ACKNOWLEDGE',
             'remarks' => 'nullable|string',
+            'cost_amount' => 'nullable|numeric|min:0',
+            'rating' => 'nullable|numeric|min:0|max:5',
+            'handled_by' => 'nullable|array',
+            'handled_by.*' => 'integer',
         ]);
 
         try {
-            $success = $this->jorfService->jorfAction($jorfId, $empData['emp_id'], $actionType, $remarks);
-
+            $success = $this->jorfService->jorfAction($jorfId, $empData['emp_id'], $actionType, $remarks, $costAmount, $rating, $handledBy);
             if ($success) {
                 return response()->json([
                     'success' => true,
@@ -180,6 +192,15 @@ class JorfController extends Controller
         } catch (\Exception $e) {
             abort(404, 'Attachment not found');
         }
+    }
+    public function getFacilitiesEmployees()
+    {
+        $employees = $this->userRoleService->getFacilitiesEmployees();
+
+        return response()->json([
+            'success' => true,
+            'employees' => $employees,
+        ]);
     }
     /**
      * Helper to decode base64 JSON filters

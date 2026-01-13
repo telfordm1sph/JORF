@@ -77,13 +77,19 @@ class AuthMiddleware
 
         $userId = $currentUser->emp_id;
         $department = $currentUser->emp_dept ?? '';
-        $position = $currentUser->emp_position ?? '';
-        if (stripos($department, 'Facilities') !== false) {
+        $jobTitle = $currentUser->emp_jobtitle ?? '';
+        // dd($department, $position);
+        if (
+            $department === 'Facilities' &&
+            stripos($jobTitle, 'Facility Engineer') === 0
+        ) {
+            $systemRoles[] = 'Facilities_Coordinator'; // or Facilities_Assigner
+        }
+        // General Facilities role
+        elseif (stripos($department, 'Facilities') !== false) {
             $systemRoles[] = 'Facilities';
         }
-        if ($position == 2) {
-            $systemRoles[] = 'Requestor';
-        }
+
         $userRoles = $this->userRoleService->getRole($userId);
 
         // if (

@@ -28,4 +28,7 @@ Route::prefix($app_name)
         Route::get('/jorf/{jorfId}/actions', [JorfController::class, 'getJorfActions'])->name('jorf.getActions');
 
         Route::post('/jorf/action', [JorfController::class, 'jorfAction'])->name('jorf.actions');
+
+        Route::get('/jorf/facilities-employees', [JorfController::class, 'getFacilitiesEmployees'])
+            ->name('jorf.facilities.employees');
     });

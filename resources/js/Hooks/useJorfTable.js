@@ -1,16 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { router } from "@inertiajs/react";
 
-const statusMap = {
-    All: "all",
-    Pending: 1,
-    Approved: 2,
-    Ongoing: 3,
-    Done: 4,
-    Cancelled: 5,
-    Disapproved: 6,
-};
-
 const encodeParams = (params) => {
     const filtered = Object.fromEntries(
         Object.entries(params).filter(([_, v]) => v !== "" && v !== null)
@@ -19,29 +9,20 @@ const encodeParams = (params) => {
 };
 
 export default function useJorfTable({ initialFilters, pagination }) {
-    // ─── State ─────────────────────────────
     const [loading, setLoading] = useState(false);
     const [searchValue, setSearchValue] = useState("");
-    const [activeFilter, setActiveFilter] = useState(
+    const [statusFilter, setStatusFilter] = useState(
         initialFilters?.status || "all"
     );
     const [filters, setFilters] = useState(initialFilters || {});
 
-    // ─── Refs ──────────────────────────────
     const searchTimeoutRef = useRef(null);
 
-    // ─── Effects ───────────────────────────
     useEffect(() => {
         setSearchValue(filters?.search || "");
-        if (filters?.status) {
-            const labelKey = Object.keys(statusMap).find(
-                (key) => statusMap[key] === filters.status
-            );
-            setActiveFilter(labelKey || "All");
-        }
+        setStatusFilter(filters?.status || "all");
     }, [filters?.search, filters?.status]);
 
-    // ─── Helpers ───────────────────────────
     const fetchTableData = (params) => {
         setLoading(true);
         router.get(route("jorf.table"), encodeParams(params), {
@@ -51,16 +32,14 @@ export default function useJorfTable({ initialFilters, pagination }) {
         });
     };
 
-    // ─── Handlers ──────────────────────────
-    const handleStatusFilter = (filterType) => {
-        setActiveFilter(filterType);
+    const handleStatusChange = (value) => {
+        setStatusFilter(value);
 
-        const statusValue = statusMap[filterType] || "all";
         const params = {
             page: 1,
             pageSize: pagination?.per_page || 10,
             search: filters?.search || "",
-            status: statusValue,
+            status: value,
             sortField: filters?.sortField || "created_at",
             sortOrder: filters?.sortOrder || "desc",
         };
@@ -72,7 +51,7 @@ export default function useJorfTable({ initialFilters, pagination }) {
             page: paginationData.current,
             pageSize: paginationData.pageSize,
             search: filters?.search || "",
-            status: statusMap[activeFilter] || "all",
+            status: statusFilter,
             sortField: sorter?.field || "created_at",
             sortOrder: sorter?.order === "ascend" ? "asc" : "desc",
         };
@@ -88,7 +67,7 @@ export default function useJorfTable({ initialFilters, pagination }) {
                 page: 1,
                 pageSize: pagination?.per_page || 10,
                 search: value,
-                status: statusMap[activeFilter] || "all",
+                status: statusFilter,
                 sortField: filters?.sortField || "created_at",
                 sortOrder: filters?.sortOrder || "desc",
             };
@@ -99,10 +78,10 @@ export default function useJorfTable({ initialFilters, pagination }) {
     return {
         loading,
         searchValue,
-        activeFilter,
+        statusFilter,
         filters,
         setFilters,
-        handleStatusFilter,
+        handleStatusChange,
         handleTableChange,
         handleSearch,
     };

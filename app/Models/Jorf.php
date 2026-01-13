@@ -26,6 +26,8 @@ class Jorf extends Model
         'remarks',
         'status',
         'cost_amount',
+        'rating',
+        'handled_by',
         'handled_at',
     ];
 
