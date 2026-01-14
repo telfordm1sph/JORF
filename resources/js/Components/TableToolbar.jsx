@@ -34,6 +34,15 @@ export default function TableToolbar({
 
     return (
         <Space size="middle" style={{ width: "100%", marginBottom: 16 }}>
+            <Select
+                value={statusFilter}
+                onChange={onStatusChange}
+                style={{ width: 300 }}
+                placeholder="Filter by status"
+                options={statusOptions}
+                showSearch
+                optionFilterProp="label"
+            />
             <Input
                 placeholder="Search JORF..."
                 prefix={<SearchOutlined />}
@@ -41,15 +50,6 @@ export default function TableToolbar({
                 onChange={(e) => onSearch(e.target.value)}
                 style={{ width: 300 }}
                 allowClear
-            />
-            <Select
-                value={statusFilter}
-                onChange={onStatusChange} // will receive numeric value
-                style={{ width: 180 }}
-                placeholder="Filter by status"
-                options={statusOptions}
-                showSearch
-                optionFilterProp="label"
             />
         </Space>
     );

@@ -8,6 +8,7 @@ import {
     CloseCircleOutlined,
     StopOutlined,
 } from "@ant-design/icons";
+import { CircleCheckBigIcon, ThumbsDownIcon, ThumbsUpIcon } from "lucide-react";
 
 export default function StatCard({ stats }) {
     const statusConfig = [
@@ -19,7 +20,7 @@ export default function StatCard({ stats }) {
         {
             key: "Approved",
             title: "Approved",
-            icon: <CheckCircleOutlined />,
+            icon: <ThumbsUpIcon />,
         },
         {
             key: "Ongoing",
@@ -29,7 +30,7 @@ export default function StatCard({ stats }) {
         {
             key: "Done",
             title: "Done",
-            icon: <FileTextOutlined />,
+            icon: <CircleCheckBigIcon />,
         },
         {
             key: "Acknowledged",
@@ -44,7 +45,7 @@ export default function StatCard({ stats }) {
         {
             key: "Disapproved",
             title: "Disapproved",
-            icon: <CloseCircleOutlined />,
+            icon: <ThumbsDownIcon />,
         },
     ];
 

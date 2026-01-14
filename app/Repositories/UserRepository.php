@@ -36,6 +36,28 @@ class UserRepository
             ])
             ->first();
     }
+    public function findDeptHeadOfRequestorById(string $empId): ?object
+    {
+        return Masterlist::where('EMPLOYID', $empId)
+            ->where('ACCSTATUS', '1')
+            ->select([
+                'APPROVER2 as approver2',
+                'APPROVER3 as approver3',
+            ])
+            ->first();
+    }
+    public function getFacilitiesCoordinator(): ?object
+    {
+        return Masterlist::where('DEPARTMENT', 'Facilities')
+            ->where('JOB_TITLE', 'like', 'Facilities Engineer%')
+            ->where('ACCSTATUS', '1')
+            ->select([
+                'EMPLOYID as emp_id',
+                'EMPNAME as empname',
+            ])
+            ->first();
+    }
+
     public function getFacilitiesEmployees(): array
     {
         return Masterlist::where('DEPARTMENT', 'Facilities')

@@ -7,7 +7,7 @@ import { createInertiaApp } from "@inertiajs/react";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
 import { ConfigProvider, theme as antdTheme } from "antd";
 import { ThemeProvider, ThemeContext } from "../js/Components/ThemeContext";
-
+import { NotificationProvider } from "./Context/NotificationContext";
 // import Snowfall from "react-snowfall";
 
 const rawAppName = import.meta.env.VITE_APP_NAME || "Laravel";
@@ -28,6 +28,8 @@ createInertiaApp({
         const emp_data =
             props.initialPage?.props?.emp_data ||
             props.initialPage?.props?.auth?.emp_data;
+
+        const userId = emp_data?.emp_id;
 
         // Always clear old token first
         localStorage.removeItem("authify-token");
@@ -63,8 +65,9 @@ createInertiaApp({
                                                 : antdTheme.defaultAlgorithm,
                                     }}
                                 >
-                                    <div style={{ position: "relative" }}>
-                                        {/* {isSnowSeason && (
+                                    <NotificationProvider userId={userId}>
+                                        <div style={{ position: "relative" }}>
+                                            {/* {isSnowSeason && (
                                                 <Snowfall
                                                     color={snowColor}
                                                     snowflakeCount={150}
@@ -82,8 +85,9 @@ createInertiaApp({
                                                     }}
                                                 />
                                             )} */}
-                                        <App {...props} />
-                                    </div>
+                                            <App {...props} />
+                                        </div>
+                                    </NotificationProvider>
                                 </ConfigProvider>
                             );
                         }}

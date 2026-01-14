@@ -1,12 +1,12 @@
 import { usePage } from "@inertiajs/react";
 
 import SidebarLink from "@/Components/sidebar/SidebarLink";
-import Dropdown from "@/Components/sidebar/Dropdown";
-import { ClipboardList, FileText } from "lucide-react";
-import { TableOutlined } from "@ant-design/icons";
+
+import { ClipboardList, FileText, SheetIcon } from "lucide-react";
 
 export default function NavLinks({ isSidebarOpen }) {
     const { emp_data } = usePage().props;
+    console.log("Nav", emp_data);
 
     return (
         <nav
@@ -21,16 +21,18 @@ export default function NavLinks({ isSidebarOpen }) {
             />
             <SidebarLink
                 href={route("jorf.table")}
-                icon={<TableOutlined className="w-5 h-5" />}
+                icon={<SheetIcon className="w-5 h-5" />}
                 label="JORF Table"
                 isSidebarOpen={isSidebarOpen}
             />
-            <SidebarLink
-                href={route("requestType.form")}
-                icon={<ClipboardList className="w-5 h-5" />}
-                label="Request Types"
-                isSidebarOpen={isSidebarOpen}
-            />
+            {emp_data?.system_roles?.includes("Facilities_Coordinator") && (
+                <SidebarLink
+                    href={route("requestType.form")}
+                    icon={<ClipboardList className="w-5 h-5" />}
+                    label="Request Types"
+                    isSidebarOpen={isSidebarOpen}
+                />
+            )}
         </nav>
     );
 }
