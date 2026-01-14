@@ -78,7 +78,7 @@ Route::prefix('api')->middleware(AuthMiddleware::class)->group(function () {
             ->map(function ($notif) {
                 return [
                     'id' => $notif->id,
-                    'ticket_id' => $notif->data['ticket_id'] ?? null,
+                    'jorf_id' => $notif->data['jorf_id'] ?? null,
                     'message' => $notif->data['message'] ?? '',
                     'type' => $notif->data['type'] ?? '',
                     'project' => $notif->data['project_name'] ?? '',

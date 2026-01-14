@@ -184,11 +184,11 @@ class JorfService
     protected function applyRoleFilters($query, array $empData)
     {
         $currentEmpId = $empData['emp_id'] ?? null;
-        $userRoles    = $empData['user_roles'] ?? '';
-        $systemRoles  = $empData['system_roles'] ?? [];
+        $userRoles    = $empData['emp_user_roles'] ?? '';
+        $systemRoles  = $empData['emp_system_roles'] ?? [];
 
         // ---- Department Head ----
-        if ($userRoles === 'DEPARTMENT_HEAD' && $currentEmpId) {
+        if ($userRoles == 'DEPARTMENT_HEAD' && $currentEmpId) {
 
             $requestorIds = Masterlist::where(function ($q) use ($currentEmpId) {
                 $q->where('APPROVER2', $currentEmpId)
@@ -199,7 +199,7 @@ class JorfService
             if ($requestorIds->isEmpty()) {
                 return $query->whereRaw('1 = 0');
             }
-
+// dd($requestorIds->toArray());
             return $query->whereIn('employid', $requestorIds);
         }
         // ---- Facilities ----
@@ -267,8 +267,8 @@ class JorfService
     {
         $jorf = $this->jorfRepository->getJorfById($jorfId);
         $currentEmpId = $empData['emp_id'] ?? null;
-        $userRoles = $empData['user_roles'] ?? '';
-        $systemRoles = $empData['system_roles'] ?? [];
+        $userRoles = $empData['emp_user_roles'] ?? '';
+        $systemRoles = $empData['emp_system_roles'] ?? [];
         $status = $jorf->status;
 
         $actions = [];

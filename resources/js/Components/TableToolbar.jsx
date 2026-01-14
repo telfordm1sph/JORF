@@ -1,5 +1,5 @@
 import React from "react";
-import { Input, Select, Space } from "antd";
+import { Col, Input, Row, Select } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 
 export default function TableToolbar({
@@ -33,24 +33,33 @@ export default function TableToolbar({
     });
 
     return (
-        <Space size="middle" style={{ width: "100%", marginBottom: 16 }}>
-            <Select
-                value={statusFilter}
-                onChange={onStatusChange}
-                style={{ width: 300 }}
-                placeholder="Filter by status"
-                options={statusOptions}
-                showSearch
-                optionFilterProp="label"
-            />
-            <Input
-                placeholder="Search JORF..."
-                prefix={<SearchOutlined />}
-                value={searchValue}
-                onChange={(e) => onSearch(e.target.value)}
-                style={{ width: 300 }}
-                allowClear
-            />
-        </Space>
+    <Row
+            justify="space-between"
+            align="middle"
+            style={{ marginBottom: 16 }}
+        >
+            <Col>
+                <Select
+                    value={statusFilter}
+                    onChange={onStatusChange}
+                    style={{ width: 300 }}
+                    placeholder="Filter by status"
+                    options={statusOptions}
+                    showSearch
+                    optionFilterProp="label"
+                />
+            </Col>
+
+            <Col>
+                <Input
+                    placeholder="Search JORF..."
+                    prefix={<SearchOutlined />}
+                    value={searchValue}
+                    onChange={(e) => onSearch(e.target.value)}
+                    style={{ width: 300 }}
+                    allowClear
+                />
+            </Col>
+        </Row>
     );
 }

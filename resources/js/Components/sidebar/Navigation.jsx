@@ -25,7 +25,7 @@ export default function NavLinks({ isSidebarOpen }) {
                 label="JORF Table"
                 isSidebarOpen={isSidebarOpen}
             />
-            {emp_data?.system_roles?.includes("Facilities_Coordinator") && (
+            {emp_data?.emp_system_roles?.includes("Facilities_Coordinator") && (
                 <SidebarLink
                     href={route("requestType.form")}
                     icon={<ClipboardList className="w-5 h-5" />}

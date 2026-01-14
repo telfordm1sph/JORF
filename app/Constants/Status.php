@@ -20,7 +20,7 @@ class Status
         self::ONGOING => 'Ongoing',
         self::DONE => 'Done',
         self::ACKNOWLEDGED => 'Acknowledged',
-        self::CANCELLED => 'Cancelled',
+        self::CANCELLED => 'Canceled',
         self::DISAPPROVED => 'Disapproved',
     ];
 

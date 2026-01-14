@@ -12,8 +12,9 @@ import {
     Row,
     Col,
 } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { SendOutlined, UploadOutlined } from "@ant-design/icons";
 import EmployeeInfo from "@/Components/form/EmployeeInfo";
+
 
 const { TextArea } = Input;
 
@@ -143,12 +144,13 @@ const FormJORF = () => {
                     <Form.Item>
                         <Button
                             type="primary"
+                             style={{ backgroundColor: "#7C2D12" }}
                             htmlType="submit"
                             block
                             loading={submitting}
                             disabled={submitting}
                         >
-                            Generate
+                            <SendOutlined /> Generate
                         </Button>
                     </Form.Item>
                 </Form>

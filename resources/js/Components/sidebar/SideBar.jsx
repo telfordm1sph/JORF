@@ -11,6 +11,7 @@ import {
     PanelLeftOpen,
     LogOut,
     User,
+    ToolCase,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -62,7 +63,7 @@ export default function Sidebar() {
         flex flex-col min-h-screen
         ${isSidebarOpen ? "w-[240px]" : "w-[80px]"}
         px-4 pb-6 pt-4
-        bg-gray-900 text-white
+        bg-orange-900 text-white
     `}
             >
                 {/* Desktop Collapse Button */}
@@ -88,36 +89,25 @@ export default function Sidebar() {
                     <X className="w-6 h-6" />
                 </button>
 
-                {/* LOGO */}
-                <Link
-                    href={route("dashboard")}
-                    className={`flex items-center ${
-                        isSidebarOpen ? "pl-[10px]" : "justify-center"
-                    } text-lg font-bold`}
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="1.5"
-                        stroke="currentColor"
-                        className="w-6 h-6"
+     {/* LOGO */}
+                <div className="flex justify-center">
+                    <Link
+                        href={route("dashboard")}
+                        className={`flex items-center ${
+                            isSidebarOpen ? "px-4" : "justify-center"
+                        }`}
                     >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9 3H7.5A2.25 2.25 0 0 0 5.25 5.25V7A2.25 2.25 0 0 1 3 9.25v1.5A2.25 2.25 0 0 1 5.25 13V14.75A2.25 2.25 0 0 0 7.5 17h1.5M15 3h1.5A2.25 2.25 0 0 1 18.75 5.25V7A2.25 2.25 0 0 0 21 9.25v1.5A2.25 2.25 0 0 0 18.75 13V14.75A2.25 2.25 0 0 1 16.5 17H15"
+                        <img
+                            src="/images/Telford_logo.jpg"
+                            alt="Logo"
+                            className={`${
+                                isSidebarOpen
+                                    ? "w-full max-w-[160px] h-10"
+                                    : "w-10 h-10"
+                            } object-contain`}
                         />
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9 3h6v18H9z"
-                        />
-                    </svg>
-                    {isSidebarOpen && (
-                        <p className="pt-[2px] pl-1">{formattedAppName}</p>
-                    )}
-                </Link>
+                    </Link>
+                </div>
 
                 <br />
 

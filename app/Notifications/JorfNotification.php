@@ -70,24 +70,24 @@ class JorfNotification extends Notification implements ShouldBroadcast
         $action = $this->actionRequired;
 
         $message = match ($action) {
-            'PENDING' => "New Jorf {$this->jorfId} created by {$this->actorName}",
-            'APPROVED' => "Jorf {$this->jorfId} is approved by {$this->actorName}. Please assess.",
-            'ONGOING' => "Jorf {$this->jorfId} assigned by {$this->actorName}. Please handle it.",
-            'DONE' => "Jorf {$this->jorfId} closed by {$this->actorName}. Please acknowledge.",
-            'ACKNOWLEDGE' => "Jorf {$this->jorfId} acknowledged by {$this->actorName}.",
-            'CANCEL' => "Jorf {$this->jorfId} canceled by {$this->actorName}.",
-            'DISAPPROVED' => "Jorf {$this->jorfId} disapproved by {$this->actorName}.",
+            'REVIEW' => "New Jorf {$this->jorfId} created by {$this->actorName}",
+            'APPROVE' => "Jorf {$this->jorfId} is approved by {$this->actorName}|| . Please assess.",
+            'ONGOING' => "Jorf {$this->jorfId} assigned by {$this->actorName}|| . Please handle it.",
+            'DONE' => "Jorf {$this->jorfId} closed by {$this->actorName}|| . Please acknowledge.",
+            'ACKNOWLEDGE' => "Jorf {$this->jorfId} acknowledged by {$this->actorName}|| .",
+            'CANCEL' => "Jorf {$this->jorfId} canceled by {$this->actorName}|| .",
+            'DISAPPROVE' => "Jorf {$this->jorfId} disapproved by {$this->actorName}|| .",
             default => "Jorf {$this->jorfId} updated."
         };
 
         $type = match ($action) {
-            'PENDING' => 'JORF_CREATED',
-            'APPROVED' => 'JORF_APPROVED',
+            'REVIEW' => 'JORF_CREATED',
+            'APPROVE' => 'JORF_APPROVED',
             'ONGOING' => 'JORF_ONGOING',
             'DONE' => 'JORF_DONE',
             'ACKNOWLEDGE' => 'JORF_ACKNOWLEDGED',
             'CANCEL' => 'JORF_CANCELLED',
-            'DISAPPROVED' => 'JORF_DISAPPROVED',
+            'DISAPPROVE' => 'JORF_DISAPPROVED',
             default => 'JORF_UPDATED'
         };
 

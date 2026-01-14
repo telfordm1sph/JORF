@@ -5,10 +5,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 $app_name = env('APP_NAME', '');
-
+require __DIR__ . '/api.php';
 // Authentication routes
 require __DIR__ . '/auth.php';
-require __DIR__ . '/api.php';
+
 // General routes
 require __DIR__ . '/general.php';
 //admin

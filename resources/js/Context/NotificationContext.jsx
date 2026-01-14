@@ -13,7 +13,7 @@ export function NotificationProvider({ children, userId }) {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isConnected, setIsConnected] = useState(false);
-    const [ticketUpdates, setTicketUpdates] = useState([]);
+    const [jorfUpdates, setJorfUpdates] = useState([]);
     const loadingRef = useRef(false);
     const channelRef = useRef(null);
 
@@ -65,7 +65,7 @@ export function NotificationProvider({ children, userId }) {
             setNotifications((prev) => {
                 const newNotif = {
                     id: notification.id || Date.now(),
-                    ticket_id: notification.ticket_id,
+                    jorf_id: notification.jorf_id,
                     message: notification.message,
                     type: notification.type,
                     request_type: notification.request_type,
@@ -75,7 +75,7 @@ export function NotificationProvider({ children, userId }) {
                         notification.timestamp || new Date().toISOString(),
                     read_at: null,
                     data: {
-                        ticket_id: notification.ticket_id,
+                        jorf_id: notification.jorf_id,
                         message: notification.message,
                         type: notification.type,
                         request_type: notification.request_type,
@@ -88,10 +88,10 @@ export function NotificationProvider({ children, userId }) {
                 setUnreadCount(updated.filter((n) => !n.read_at).length);
                 return updated;
             });
-            setTicketUpdates((prev) => [
+            setJorfUpdates((prev) => [
                 ...prev,
                 {
-                    ticketId: notification.ticket_id,
+                    jorfId: notification.jorf_id,
                     type: notification.type,
                     action: notification.action_required,
                     timestamp: new Date().toISOString(),
@@ -121,8 +121,8 @@ export function NotificationProvider({ children, userId }) {
             setIsConnected(false);
         };
     }, [userId, fetchNotifications]);
-    const clearTicketUpdates = useCallback(() => {
-        setTicketUpdates([]);
+    const clearJorfUpdates = useCallback(() => {
+        setJorfUpdates([]);
     }, []);
     /** Mark one notification as read */
     const markAsRead = useCallback(async (notificationId) => {
@@ -184,8 +184,8 @@ export function NotificationProvider({ children, userId }) {
                 markAsRead,
                 markAllAsRead,
                 fetchNotifications,
-                ticketUpdates,
-                clearTicketUpdates,
+                jorfUpdates,
+                clearJorfUpdates,
             }}
         >
             {children}

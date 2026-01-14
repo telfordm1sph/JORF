@@ -141,7 +141,7 @@ export default function NotificationBell() {
 
         setIsOpen(false);
 
-        if (notif.ticket_id || notifData.ticket_id) {
+        if (notif.jorf_id || notifData.jorf_id) {
             window.location.href = route("tickets.datatable");
         }
     };
@@ -253,7 +253,7 @@ export default function NotificationBell() {
                                 const message =
                                     notifData.message || notif.message;
                                 const ticketId =
-                                    notifData.ticket_id || notif.ticket_id;
+                                    notifData.jorf_id || notif.jorf_id;
                                 const requestType = notifData.request_type;
                                 const details = notifData.details;
                                 const actionRequired =
@@ -266,7 +266,7 @@ export default function NotificationBell() {
                                         onClick={() =>
                                             handleNotificationClick({
                                                 ...notif,
-                                                ticket_id: ticketId,
+                                                jorf_id: ticketId,
                                                 data: notifData,
                                             })
                                         }

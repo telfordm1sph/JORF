@@ -16,15 +16,16 @@ const SidebarLink = ({
 
     // Force dark mode classes
     const baseText = "text-white"; // always readable
-    const hoverBg = "hover:bg-gray-700";
-    const activeBg = "bg-gray-700";
-    const activeText = "text-white"; // for active link
+    const hoverBg = "hover:bg-white";
+    const hoverText = "hover:text-orange-600";
+    const activeBg = "bg-white";
+    const activeText = "text-orange-600"; // for active link
 
     return (
         <Link
             href={href}
             className={`relative flex items-center px-4 py-2 transition-colors duration-150 rounded-md
-    ${isActive ? `${activeBg} ${activeText}` : `${hoverBg} ${baseText}`}`}
+    ${isActive ? `${activeBg} ${activeText}` : `${hoverBg} ${hoverText}`}`}
             title={!isSidebarOpen ? label : ""} // tooltip on hover if collapsed
         >
             {/* Icon always visible */}

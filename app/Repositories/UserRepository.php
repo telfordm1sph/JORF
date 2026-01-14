@@ -49,7 +49,7 @@ class UserRepository
     public function getFacilitiesCoordinator(): ?object
     {
         return Masterlist::where('DEPARTMENT', 'Facilities')
-            ->where('JOB_TITLE', 'like', 'Facilities Engineer%')
+            ->where('JOB_TITLE', 'like', 'Facility Engineer%')
             ->where('ACCSTATUS', '1')
             ->select([
                 'EMPLOYID as emp_id',

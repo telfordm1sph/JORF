@@ -159,15 +159,23 @@ class NotificationService
      */
     private function getRecipients($jorf, array $actor, string $action): array
     {
+        // dd($jorf, $actor, $action);
         $action = strtoupper($action);
         // Default notification logic for non-Support Service requests
         switch ($action) {
             case 'CREATED':
                 // New jorf - notify Department Head of requestor
-                $deptHead = $this->userRepo->findDeptHeadOfRequestorById($jorf->employid);
-                return $deptHead ? [$deptHead] : [];
+             $deptHead = $this->userRepo->findDeptHeadOfRequestorById($jorf->employid);
 
-            case 'APPROVED':
+            $recipients = [];
+            if ($deptHead) {
+                if (!empty($deptHead->approver2)) $recipients[] = $deptHead->approver2;
+                if (!empty($deptHead->approver3)) $recipients[] = $deptHead->approver3;
+            }
+            return $recipients;
+
+ 
+            case 'APPROVE':
                 // Jorf Approved - notify Facilities Coordinator
                 $facilitesCoordinators = $this->userRepo->getFacilitiesCoordinator();
                 return $facilitesCoordinators ? [$facilitesCoordinators] : [];
@@ -194,7 +202,7 @@ class NotificationService
                 $requestor = $this->userRepo->findUserById($jorf->employid);
                 return $requestor ? [$requestor] : [];
 
-            case 'ACKNOWLEDGED':
+            case 'ACKNOWLEDGE':
                 // Get the facilities coordinator
                 $facilitiesCoordinator = $this->userRepo->getFacilitiesCoordinator();
 
@@ -218,14 +226,8 @@ class NotificationService
 
                 return $allUsers;
 
-
-            case 'CLOSE':
-                // Ticket closed - notify all MIS support except the actor
-                // $supports = $this->userRepo->getMISSupportUsers();
-                // return array_filter($supports, fn($u) => $u->emp_id !== $actor['emp_id']);
-
             case 'CANCEL':
-            case 'DISAPPROVED':
+            case 'DISAPPROVE':
                 // Ticket cancelled - logic depends on who cancelled
                 if ($jorf->employid === $actor['emp_id']) {
                     // Requestor cancelled - notify MIS support
@@ -250,12 +252,13 @@ class NotificationService
     {
         return match (strtoupper($action)) {
             'CREATED' => 'REVIEW',
-            'PENDING' => 'APPROVE',
+            'APPROVE' => 'APPROVE',
+            'ONGOING' => 'ONGOING',
+            'DONE' => 'DONE', 
+            'ACKNOWLEDGE' => 'ACKNOWLEDGE',
             'APPROVED' => 'ASSIGN',
-            'ASSIGNED' => 'CLOSE',
-            'CLOSED' => 'ACKNOWLEDGE',
-            'CANCEL' => 'INFO',
-            'DISAPPROVED' => 'DISAPPROVED',
+            'CANCEL' => 'CANCEL',  
+            'DISAPPROVE' => 'DISAPPROVE',
             default => null,
         };
     }

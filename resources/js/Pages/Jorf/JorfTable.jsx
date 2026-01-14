@@ -10,6 +10,8 @@ import { useDrawer } from "@/Hooks/useDrawer";
 import axios from "axios";
 import dayjs from "dayjs";
 import StatCard from "@/Components/StatCard";
+import { useNotifications } from "@/Context/NotificationContext";
+import { useRealtimeJorfUpdates } from "@/Hooks/useRealtimeJorfUpdates";
 
 const JorfTable = () => {
     const {
@@ -39,6 +41,9 @@ const JorfTable = () => {
     const [logsLoading, setLogsLoading] = useState(false);
     const renderValue = (value) =>
         value === null || value === "" ? "-" : value;
+    const {jorfUpdates, clearJorfUpdates} = useNotifications();
+    useRealtimeJorfUpdates({ jorfUpdates, clearJorfUpdates });
+
 
     const fetchAttachments = async (jorfId) => {
         try {
@@ -302,7 +307,7 @@ const JorfTable = () => {
     return (
         <AuthenticatedLayout>
             {/* Mini status overview cards */}
-            <StatCard stats={statusCounts} />
+            <StatCard stats={statusCounts} activeStatus={statusFilter} />
 
             {/* Search and filter toolbar */}
 
@@ -351,7 +356,7 @@ const JorfTable = () => {
                 onLoadMoreLogs={handleLoadMoreLogs}
                 logsHasMore={logsHasMore}
                 logsLoading={logsLoading}
-                systemRoles={emp_data?.system_roles || []}
+                systemRoles={emp_data?.emp_system_roles || []}
             />
         </AuthenticatedLayout>
     );
