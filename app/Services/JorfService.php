@@ -15,11 +15,13 @@ class JorfService
 {
     protected JorfRepository $jorfRepository;
     protected UserRepository $userRepo;
+    protected NotificationService $notificationService;
 
-    public function __construct(JorfRepository $jorfRepository, UserRepository $userRepo)
+    public function __construct(JorfRepository $jorfRepository, UserRepository $userRepo, NotificationService $notificationService)
     {
         $this->jorfRepository = $jorfRepository;
         $this->userRepo = $userRepo;
+        $this->notificationService = $notificationService;
     }
 
     public function getRequestType()
@@ -51,6 +53,13 @@ class JorfService
                 'status'       => 1,
                 'created_by'   => $employeeData['employid'],
             ]));
+            $this->notificationService->notifyJorfAction(
+                $jorf,
+                'Created',
+                ['emp_id' => $employeeData['employid'], 'name' => $employeeData['empname']],
+                $employeeData,
+                ['DEPT_HEAD']
+            );
 
             $this->storeAttachments($request->file('attachments', []), $jorfNumber, $employeeData['employid']);
         });
@@ -397,7 +406,7 @@ class JorfService
                 'name'   => $actorUser->empname ?? 'Unknown',
             ];
 
-            // $this->notificationService->notifyTicketAction($jorf, $actionType, $actorData);
+            $this->notificationService->notifyJorfAction($jorf, $actionType, $actorData);
 
             return true;
         });
