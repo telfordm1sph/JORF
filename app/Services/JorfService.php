@@ -88,95 +88,101 @@ class JorfService
     /**
      * Get paginated JORF table with filters, search, sort
      */
-    public function getJorfDataTable(array $filters, array $empData): array
-    {
-        // ----- Base Queries -----
-        $tableQuery = $this->applyRoleFilters($this->jorfRepository->query(), $empData);
-        $countQuery = $this->applyRoleFilters($this->jorfRepository->query(), $empData);
+  public function getJorfDataTable(array $filters, array $empData): array
+{
+    // ----- Base Queries -----
+    $tableQuery = $this->applyRoleFilters($this->jorfRepository->query(), $empData);
+    $countQuery = $this->applyRoleFilters($this->jorfRepository->query(), $empData);
 
-        // ----- Apply status filter only for table -----
-        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+    // ----- Apply status filter only for table -----
+    if (!empty($filters['status']) && $filters['status'] !== 'all') {
+        // Check if status is combined (e.g., "6,7" for Rejected)
+        if (str_contains($filters['status'], ',')) {
+            $statuses = explode(',', $filters['status']);
+            $tableQuery->whereIn('status', $statuses);
+        } else {
             $tableQuery->where('status', $filters['status']);
         }
+    }
 
-        // ----- Apply request type filter only for table -----
-        if (!empty($filters['requestType'])) {
-            $tableQuery->where('request_type', $filters['requestType']);
-        }
+    // ----- Apply request type filter only for table -----
+    if (!empty($filters['requestType'])) {
+        $tableQuery->where('request_type', $filters['requestType']);
+    }
 
-        // ----- Apply search filter only for table -----
-        if (!empty($filters['search'])) {
-            $search = $filters['search'];
-            $tableQuery->where(function ($q) use ($search) {
-                $q->where('jorf_id', 'like', "%{$search}%")
-                    ->orWhere('empname', 'like', "%{$search}%")
-                    ->orWhere('employid', 'like', "%{$search}%")
-                    ->orWhere('department', 'like', "%{$search}%")
-                    ->orWhere('prodline', 'like', "%{$search}%")
-                    ->orWhere('details', 'like', "%{$search}%");
-            });
-        }
-
-        // ----- Sorting & Pagination -----
-        $sortField = $filters['sortField'] ?? 'created_at';
-        $sortOrder = $filters['sortOrder'] ?? 'desc';
-        $tableQuery->orderBy($sortField, $sortOrder);
-
-        $page     = $filters['page'] ?? 1;
-        $pageSize = $filters['pageSize'] ?? 10;
-        $paginated = $tableQuery->paginate($pageSize, ['*'], 'page', $page);
-
-        // ----- Status counts (unfiltered by status) -----
-        $countQuery->getQuery()->orders = []; // remove orderBy for count query
-        $statusCounts = $this->jorfRepository->getStatusCountsFromQuery($countQuery);
-
-        // ----- Fetch all handled_by employee names in one query -----
-        $empIds = collect($paginated->items())
-            ->pluck('handled_by')
-            ->filter() // remove nulls
-            ->map(fn($ids) => explode(',', $ids)) // split comma-separated IDs
-            ->flatten()
-            ->unique()
-            ->toArray();
-
-        $users = [];
-        if (!empty($empIds)) {
-            $users = User::whereIn('EMPLOYID', $empIds)
-                ->pluck('EMPNAME', 'EMPLOYID')
-                ->toArray();
-        }
-
-        // ----- Prepare table data -----
-        $data = collect($paginated->items())->map(function ($jorf) use ($users) {
-            // Map handled_by IDs to names
-            $handledByNames = null;
-            if (!empty($jorf->handled_by)) {
-                $ids = explode(',', $jorf->handled_by);
-                $handledByNames = implode('| ', array_map(fn($id) => $users[$id] ?? $id, $ids));
-            }
-
-            return [
-                ...$jorf->toArray(),
-                'status_label'    => Status::getLabel($jorf->status),
-                'status_color'    => Status::getColor($jorf->status),
-                'handled_by_name' => $handledByNames,
-            ];
+    // ----- Apply search filter only for table -----
+    if (!empty($filters['search'])) {
+        $search = $filters['search'];
+        $tableQuery->where(function ($q) use ($search) {
+            $q->where('jorf_id', 'like', "%{$search}%")
+                ->orWhere('empname', 'like', "%{$search}%")
+                ->orWhere('employid', 'like', "%{$search}%")
+                ->orWhere('department', 'like', "%{$search}%")
+                ->orWhere('prodline', 'like', "%{$search}%")
+                ->orWhere('details', 'like', "%{$search}%");
         });
+    }
+
+    // ----- Sorting & Pagination -----
+    $sortField = $filters['sortField'] ?? 'created_at';
+    $sortOrder = $filters['sortOrder'] ?? 'desc';
+    $tableQuery->orderBy($sortField, $sortOrder);
+
+    $page     = $filters['page'] ?? 1;
+    $pageSize = $filters['pageSize'] ?? 10;
+    $paginated = $tableQuery->paginate($pageSize, ['*'], 'page', $page);
+
+    // ----- Status counts (unfiltered by status) -----
+    $countQuery->getQuery()->orders = []; // remove orderBy for count query
+    $statusCounts = $this->jorfRepository->getStatusCountsFromQuery($countQuery);
+
+    // ----- Fetch all handled_by employee names in one query -----
+    $empIds = collect($paginated->items())
+        ->pluck('handled_by')
+        ->filter() // remove nulls
+        ->map(fn($ids) => explode(',', $ids)) // split comma-separated IDs
+        ->flatten()
+        ->unique()
+        ->toArray();
+
+    $users = [];
+    if (!empty($empIds)) {
+        $users = User::whereIn('EMPLOYID', $empIds)
+            ->pluck('EMPNAME', 'EMPLOYID')
+            ->toArray();
+    }
+
+    // ----- Prepare table data -----
+    $data = collect($paginated->items())->map(function ($jorf) use ($users) {
+        // Map handled_by IDs to names
+        $handledByNames = null;
+        if (!empty($jorf->handled_by)) {
+            $ids = explode(',', $jorf->handled_by);
+            $handledByNames = implode('| ', array_map(fn($id) => $users[$id] ?? $id, $ids));
+        }
 
         return [
-            'data' => $data,
-            'pagination' => [
-                'current'     => $paginated->currentPage(),
-                'currentPage' => $paginated->currentPage(),
-                'lastPage'    => $paginated->lastPage(),
-                'total'       => $paginated->total(),
-                'perPage'     => $paginated->perPage(),
-                'pageSize'    => $paginated->perPage(),
-            ],
-            'statusCounts' => $statusCounts,
-            'filters'      => $filters,
+            ...$jorf->toArray(),
+            'status_label'    => Status::getLabel($jorf->status),
+            'status_color'    => Status::getColor($jorf->status),
+            'handled_by_name' => $handledByNames,
         ];
-    }
+    });
+
+    return [
+        'data' => $data,
+        'pagination' => [
+            'current'     => $paginated->currentPage(),
+            'currentPage' => $paginated->currentPage(),
+            'lastPage'    => $paginated->lastPage(),
+            'total'       => $paginated->total(),
+            'perPage'     => $paginated->perPage(),
+            'pageSize'    => $paginated->perPage(),
+        ],
+        'statusCounts' => $statusCounts,
+        'filters'      => $filters,
+    ];
+}
 
     /**
      * Apply role-based filters to a query.
@@ -203,14 +209,9 @@ class JorfService
             return $query->whereIn('employid', $requestorIds);
         }
         // ---- Facilities ----
-        if (in_array('Facilities_Coordinator', $systemRoles)) {
-            return $query->where('status', '!=', 1);
-        }
-        if (in_array('Facilities', $systemRoles)) {
-            return $query
-                ->whereNotIn('status', [1, 2])
-                ->whereRaw('FIND_IN_SET(?, handled_by)', [$currentEmpId]);
-        }
+          if (in_array('Facilities_Coordinator', $systemRoles) || in_array('Facilities', $systemRoles)) {
+         return $query; // no filtering on status
+         }
 
 
         // ---- Requestor (OWN records only) ----
@@ -325,6 +326,7 @@ class JorfService
         }
         if ($isRequestor && in_array($status, [Status::DONE])) {
             $actions[] = 'ACKNOWLEDGE';
+              $actions[] = 'RETURN';
         }
         // Add view for anyone who has access
         if ($isRequestor || $isDepartmentHead) {
@@ -365,6 +367,7 @@ class JorfService
             $statusMap = [
                 'APPROVE'    => 2,
                 'ONGOING'    => 3,
+                'RETURN'    => 3,
                 'DONE'       => 4,
                 'ACKNOWLEDGE' => 5,
                 'CANCEL'     => 6,

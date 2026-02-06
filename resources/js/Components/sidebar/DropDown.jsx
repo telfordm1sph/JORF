@@ -7,6 +7,7 @@ export default function Dropdown({
     links = [],
     notification = null,
     isSidebarOpen = false,
+    activeColor = "#ee5e26", // left border color
 }) {
     const { url } = usePage();
 
@@ -18,12 +19,12 @@ export default function Dropdown({
         }
     };
 
-    const isActiveLink = (href) =>
-        url === new URL(href, window.location.origin).pathname;
+    const isActiveLink = (href) => url === normalizePath(href);
 
+    // Check if any child link is active
     const hasActiveChild = useMemo(
         () => links.some((link) => isActiveLink(link.href)),
-        [url, links]
+        [url, links],
     );
 
     const [open, setOpen] = useState(false);
@@ -33,50 +34,40 @@ export default function Dropdown({
         setOpen(isSidebarOpen && hasActiveChild);
     }, [hasActiveChild, isSidebarOpen]);
 
-    // Theme-aware classes
-    const theme = localStorage.getItem("theme") === "dark" ? "dark" : "light";
-    const hoverBg =
-        theme === "dark" ? "hover:bg-gray-200" : "hover:bg-gray-700";
-    const hoverText =
-        theme === "dark" ? "hover:text-black" : "hover:text-white";
-    const activeBg = theme === "dark" ? "bg-gray-200" : "bg-gray-700";
-    const activeText = theme === "dark" ? "text-black" : "text-white";
-
-    // Determine if parent should be highlighted
-    const parentActive = !isSidebarOpen && hasActiveChild;
-
     return (
         <div className="relative w-full">
+            {/* Parent button */}
             <button
                 onClick={() => setOpen(!open)}
-                className={`relative flex items-center justify-between w-full px-4 py-2 transition-colors duration-150 rounded-md ${
-                    parentActive
-                        ? `${activeBg} ${activeText}`
-                        : `${hoverBg} ${hoverText}`
+                className={`relative flex items-center justify-between w-full px-4 py-2 transition-all duration-150 rounded-md ${
+                    hasActiveChild
+                        ? "bg-white text-orange-600 font-semibold"
+                        : "hover:bg-gray-100 hover:text-orange-600 text-white dark:text-gray-200"
                 }`}
+                style={{
+                    borderLeft: hasActiveChild
+                        ? `4px solid ${activeColor}`
+                        : "4px solid transparent",
+                }}
             >
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-2">
                     {icon && (
-                        <span className="w-6 h-6 pt-[2px] flex items-center justify-center">
+                        <span className="w-6 h-6 flex items-center justify-center">
                             {icon}
                         </span>
                     )}
-                    {isSidebarOpen && <p className="ml-2">{label}</p>}
+                    {isSidebarOpen && <span className="ml-2">{label}</span>}
                 </div>
 
-                {/* Show arrow and notification only if sidebar is open */}
+                {/* Arrow & notification */}
                 {isSidebarOpen && (
                     <div className="flex items-center space-x-2">
-                        {notification &&
-                            (typeof notification === "number" ? (
-                                <span className="bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-                                    {notification > 99 ? "99+" : notification}
-                                </span>
-                            ) : (
-                                <span className="w-2 h-2 bg-red-600 rounded-full"></span>
-                            ))}
-
-                        <span className="pt-[3px] flex items-center justify-center">
+                        {notification && typeof notification === "number" && (
+                            <span className="bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                                {notification > 99 ? "99+" : notification}
+                            </span>
+                        )}
+                        <span className="flex items-center justify-center">
                             {open ? (
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -99,7 +90,7 @@ export default function Dropdown({
                                     viewBox="0 0 24 24"
                                     strokeWidth="1.5"
                                     stroke="currentColor"
-                                    className="size-4"
+                                    className="w-6 h-6"
                                 >
                                     <path
                                         strokeLinecap="round"
@@ -113,60 +104,44 @@ export default function Dropdown({
                 )}
             </button>
 
-            {/* Render child links only if sidebar is open and dropdown is open */}
+            {/* Child links */}
             {isSidebarOpen && open && (
-                <div className="space-y-1">
-                    {links.map((link, index) => {
+                <div className="space-y-1 mt-1">
+                    {links.map((link, idx) => {
                         const active = isActiveLink(link.href);
-                        const linkNotification = link.notification;
-
                         return (
                             <Link
-                                key={`${normalizePath(link.href)}-${index}`}
+                                key={idx}
                                 href={link.href}
-                                className={`flex items-center justify-between w-full pl-8 pr-[10px] py-2 rounded transition-colors
-                                    ${
-                                        active
-                                            ? `${activeBg} ${activeText}`
-                                            : `${hoverBg} ${hoverText}`
-                                    }`}
+                                className={`flex items-center justify-between w-full pl-8 pr-3 py-2 rounded transition-all ${
+                                    active
+                                        ? "bg-white text-orange-600 font-semibold"
+                                        : "hover:bg-gray-100 hover:text-orange-600 text-white dark:text-gray-200"
+                                }`}
+                                style={{
+                                    borderLeft: active
+                                        ? `4px solid ${activeColor}`
+                                        : "4px solid transparent",
+                                }}
                             >
-                                <div className="flex items-center space-x-1">
-                                    <span className="w-6 h-6 pt-[2px] flex items-center justify-center">
-                                        {link.icon ? (
-                                            link.icon
-                                        ) : (
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                strokeWidth="1.5"
-                                                stroke="currentColor"
-                                                className="w-4 h-4"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M5.25 7.5A2.25 2.25 0 0 1 7.5 5.25h9a2.25 2.25 0 0 1 2.25 2.25v9a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25v-9Z"
-                                                />
-                                            </svg>
-                                        )}
-                                    </span>
-                                    <span className="pl-0 pr-1">
-                                        {link.label}
-                                    </span>
-                                </div>
-
-                                {linkNotification &&
-                                    (typeof linkNotification === "number" ? (
-                                        <span className="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-md">
-                                            {linkNotification > 99
-                                                ? "99+"
-                                                : linkNotification}
+                                <div className="flex items-center space-x-2">
+                                    {link.icon ? (
+                                        <span className="w-5 h-5 flex items-center justify-center">
+                                            {link.icon}
                                         </span>
                                     ) : (
-                                        <span className="w-2 h-2 mr-[7px] bg-red-600 rounded-full"></span>
-                                    ))}
+                                        <span className="w-4 h-4"></span>
+                                    )}
+                                    <span>{link.label}</span>
+                                </div>
+                                {link.notification &&
+                                    typeof link.notification === "number" && (
+                                        <span className="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-md">
+                                            {link.notification > 99
+                                                ? "99+"
+                                                : link.notification}
+                                        </span>
+                                    )}
                             </Link>
                         );
                     })}

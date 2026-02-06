@@ -60,14 +60,19 @@ class AuthMiddleware
             setcookie('sso_token', '', time() - 3600, '/');
             return $this->redirectToLogin($request);
         }
-        $canAccess = $currentUser->emp_position >= 2
-            || stripos($currentUser->emp_dept, 'Facilities') !== false;
+      $additionalUsers = DB::connection('mysql')
+    ->table('additional_users')
+    ->where('employid', $currentUser->emp_id)
+    ->exists();
+   $canAccess = $currentUser->emp_position >= 2
+    || stripos($currentUser->emp_dept, 'Facilities') !== false
+    || $additionalUsers;
 
         if (!$canAccess) {
             session()->forget('emp_data');
             session()->flush();
             $redirectUrl = urlencode(route('dashboard'));
-            $authifyUrl = "https://192.168.1.27:8080/authify/public/logout?redirect={$redirectUrl}";
+            $authifyUrl = "http://192.168.1.27:8080/authify/public/logout?redirect={$redirectUrl}";
             return Inertia::render('Unauthorized', [
                 'logoutUrl' => $authifyUrl,
                 'message' => 'Access Restricted: You do not have permission to access the JORF.',

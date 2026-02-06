@@ -6,15 +6,16 @@ import {
     Select,
     Form,
     Button,
-    Upload,
     message,
     Input,
     Row,
     Col,
+    Divider,
 } from "antd";
-import { SendOutlined, UploadOutlined } from "@ant-design/icons";
+import { SendOutlined } from "@ant-design/icons";
 import EmployeeInfo from "@/Components/form/EmployeeInfo";
-
+import AttachmentUpload from "@/Components/form/AttachmentUpload";
+import axios from "axios";
 
 const { TextArea } = Input;
 
@@ -22,57 +23,46 @@ const FormJORF = () => {
     const { requestType, emp_data } = usePage().props;
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const [fileList, setFileList] = useState([]);
+
     const onFinish = async (values) => {
         if (submitting) return;
-
         setSubmitting(true);
 
         try {
             const formData = new FormData();
-
             formData.append("request_type", values.request_type);
             formData.append("request_details", values.request_details);
 
-            (values.attachments || []).forEach((file) => {
-                formData.append("attachments[]", file.originFileObj);
+            fileList.forEach((file) => {
+                formData.append("attachments[]", file);
             });
 
             await axios.post(route("jorf.store"), formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
+                headers: { "Content-Type": "multipart/form-data" },
             });
 
             message.success("JORF submitted successfully!");
-
             window.location.reload();
         } catch (error) {
             console.error(error);
             message.error("Failed to submit JORF.");
-            setSubmitting(false); // re-enable if failed
+            setSubmitting(false);
         }
-    };
-
-    const uploadProps = {
-        multiple: true,
-        beforeUpload: () => false, // prevent auto upload
-        onChange(info) {
-            if (info.file.status === "error") {
-                message.error(`${info.file.name} upload failed.`);
-            }
-        },
     };
 
     return (
         <AuthenticatedLayout>
             <Head title="Generate JORF" />
-            <Card>
-                <Form form={form} layout="vertical" onFinish={onFinish}>
-                    <EmployeeInfo emp_data={emp_data} />
 
-                    {/* Request type + Upload button in one row */}
-                    <Row gutter={16}>
-                        <Col span={16}>
+            <Row justify="center">
+                <Col xs={24} md={20} lg={16}>
+                    <Card title="Job Order Request Form" bordered>
+                        <Form form={form} layout="vertical" onFinish={onFinish}>
+                            {/* Employee Information */}
+                            <EmployeeInfo emp_data={emp_data} />
+
+                            <Divider />
                             <Form.Item
                                 label="Request Type"
                                 name="request_type"
@@ -84,7 +74,7 @@ const FormJORF = () => {
                                 ]}
                             >
                                 <Select
-                                    placeholder="Please select request type"
+                                    placeholder="Select request type"
                                     allowClear
                                     options={requestType.map((req) => ({
                                         value: req.request_name,
@@ -92,69 +82,54 @@ const FormJORF = () => {
                                     }))}
                                 />
                             </Form.Item>
-                        </Col>
 
-                        <Col span={8}>
+                            {/* Request Details */}
                             <Form.Item
-                                label="Attachments"
-                                name="attachments"
-                                valuePropName="fileList"
-                                getValueFromEvent={(e) =>
-                                    Array.isArray(e) ? e : e?.fileList
-                                }
+                                label="Request Details"
+                                name="request_details"
                                 rules={[
                                     {
                                         required: true,
-                                        message:
-                                            "Please upload at least one file",
+                                        message: "Please enter request details",
                                     },
                                 ]}
                             >
-                                <Upload {...uploadProps}>
-                                    <Button
-                                        icon={<UploadOutlined />}
-                                        style={{ width: "100%" }}
-                                    >
-                                        Upload Files
-                                    </Button>
-                                </Upload>
+                                <TextArea
+                                    rows={4}
+                                    placeholder="Describe your request clearly..."
+                                    showCount
+                                    maxLength={500}
+                                />
                             </Form.Item>
-                        </Col>
-                    </Row>
+                            {/* Attachments */}
+                            <Form.Item
+                                label="Attachments"
+                                required
+                                extra="Drag & drop files. Images will show preview. Max 10MB per file."
+                            >
+                                <AttachmentUpload onFilesChange={setFileList} />
+                            </Form.Item>
+                            <Divider />
 
-                    {/* TextArea at the bottom */}
-                    <Form.Item
-                        label="Request Details"
-                        name="request_details"
-                        rules={[
-                            {
-                                required: true,
-                                message: "Please enter request details",
-                            },
-                        ]}
-                    >
-                        <TextArea
-                            rows={4}
-                            placeholder="Describe your request here..."
-                            showCount
-                            maxLength={500}
-                        />
-                    </Form.Item>
-
-                    <Form.Item>
-                        <Button
-                            type="primary"
-                             style={{ backgroundColor: "#7C2D12" }}
-                            htmlType="submit"
-                            block
-                            loading={submitting}
-                            disabled={submitting}
-                        >
-                            <SendOutlined /> Generate
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Card>
+                            {/* Submit */}
+                            <Form.Item>
+                                <Button
+                                    type="primary"
+                                    htmlType="submit"
+                                    block
+                                    size="large"
+                                    icon={<SendOutlined />}
+                                    loading={submitting}
+                                    disabled={submitting}
+                                    style={{ backgroundColor: "#7C2D12" }}
+                                >
+                                    Generate JORF
+                                </Button>
+                            </Form.Item>
+                        </Form>
+                    </Card>
+                </Col>
+            </Row>
         </AuthenticatedLayout>
     );
 };

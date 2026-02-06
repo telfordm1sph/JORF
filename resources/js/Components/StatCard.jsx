@@ -7,11 +7,18 @@ import {
     FileTextOutlined,
     CloseCircleOutlined,
     StopOutlined,
+    AppstoreOutlined,
 } from "@ant-design/icons";
 import { CircleCheckBigIcon, ThumbsDownIcon, ThumbsUpIcon } from "lucide-react";
 
-export default function StatCard({ stats, activeStatus }) {
+export default function StatCard({ stats, activeStatus, onStatusClick }) {
     const statusConfig = [
+        {
+            key: "All",
+            title: "All",
+            icon: <AppstoreOutlined />,
+            value: "all",
+        },
         {
             key: "Pending",
             title: "Pending",
@@ -43,16 +50,10 @@ export default function StatCard({ stats, activeStatus }) {
             value: 5,
         },
         {
-            key: "Canceled",
-            title: "Canceled",
-            icon: <StopOutlined />,
-            value: 6,
-        },
-        {
-            key: "Disapproved",
-            title: "Disapproved",
-            icon: <ThumbsDownIcon />,
-            value: 7,
+            key: "Rejected",
+            title: "Rejected",
+            icon: <CloseCircleOutlined />,
+            value: "6,7", // Combined Canceled (6) and Disapproved (7)
         },
     ];
 
@@ -84,9 +85,14 @@ export default function StatCard({ stats, activeStatus }) {
                 const hexColor = colorMap[colorName] || colorMap.default;
 
                 // Check if this card is active (matches the selected filter)
+                // Handle both single values and comma-separated values (for Rejected)
                 const isActive =
                     activeStatus === status.value ||
-                    (activeStatus === "all" && status.key === "All");
+                    (typeof activeStatus === "string" &&
+                        typeof status.value === "string" &&
+                        status.value
+                            .split(",")
+                            .includes(activeStatus.toString()));
 
                 return (
                     <Col xs={12} sm={12} md={8} lg={6} xl={3} key={status.key}>
@@ -100,7 +106,10 @@ export default function StatCard({ stats, activeStatus }) {
                                     ? `${hexColor}10`
                                     : undefined,
                                 transition: "all 0.3s ease",
+                                cursor: "pointer",
                             }}
+                            hoverable
+                            onClick={() => onStatusClick(status.value)}
                         >
                             <Statistic
                                 title={status.title}

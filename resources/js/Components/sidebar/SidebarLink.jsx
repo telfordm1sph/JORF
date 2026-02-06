@@ -7,6 +7,7 @@ const SidebarLink = ({
     icon,
     notifications = 0,
     isSidebarOpen,
+    activeColor = "#ee5e26",
 }) => {
     const { url } = usePage();
     const isActive = url === new URL(href, window.location.origin).pathname;
@@ -27,6 +28,11 @@ const SidebarLink = ({
             className={`relative flex items-center px-4 py-2 transition-colors duration-150 rounded-md
     ${isActive ? `${activeBg} ${activeText}` : `${hoverBg} ${hoverText}`}`}
             title={!isSidebarOpen ? label : ""} // tooltip on hover if collapsed
+            style={{
+                borderLeft: isActive
+                    ? `4px solid ${activeColor}`
+                    : "4px solid transparent",
+            }}
         >
             {/* Icon always visible */}
             <span className="w-6 h-6">{icon}</span>

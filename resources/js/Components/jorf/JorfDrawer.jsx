@@ -12,6 +12,7 @@ import {
     Col,
     Select,
     Rate,
+    message,
 } from "antd";
 import {
     CheckCircleOutlined,
@@ -20,17 +21,17 @@ import {
     HistoryOutlined,
     StopOutlined,
 } from "@ant-design/icons";
+import axios from "axios";
 import JorfLogsModal from "./JorfLogsModal";
 
-const { Text, Link } = Typography;
-const { Option } = Select;
+const { Link } = Typography;
+
 const JorfDrawer = ({
     open,
     onClose,
     item,
     fieldGroups,
     attachments = [],
-    title,
     headerBadges = [],
     availableAction = [],
     action,
@@ -41,33 +42,33 @@ const JorfDrawer = ({
     systemRoles = [],
 }) => {
     if (!item) return null;
-    console.log(item);
 
     const [remarks, setRemarks] = useState("");
     const [costAmount, setCostAmount] = useState(item.cost_amount || 0);
     const [logsOpen, setLogsOpen] = useState(false);
     const [employees, setEmployees] = useState([]);
-    const [employee, setEmployee] = useState(null);
+    const [employee, setEmployee] = useState([]);
     const [rating, setRating] = useState(item.rating || 0);
+
+    // controls if ACKNOWLEDGE step is active
+    const [acknowledgeMode, setAcknowledgeMode] = useState(false);
 
     useEffect(() => {
         if (item?.handled_by) {
-            const selected = item.handled_by.split(",").map((id) => id.trim());
-            setEmployee(selected);
+            setEmployee(item.handled_by.split(",").map((id) => id.trim()));
         } else {
             setEmployee([]);
         }
+        setAcknowledgeMode(false);
+        setRating(item.rating || 0);
     }, [item]);
+
     const fetchFacilitiesEmployee = async () => {
-        if (employees.length > 0) return; // already fetched
+        if (employees.length > 0) return;
         try {
             const res = await axios.get(route("jorf.facilities.employees"));
-            console.log("Fetched employees:", res.data);
-
-            // set only the array
             setEmployees(res.data.employees || []);
-        } catch (err) {
-            console.error("Error fetching employees:", err);
+        } catch {
             setEmployees([]);
         }
     };
@@ -75,32 +76,30 @@ const JorfDrawer = ({
     const renderFieldValue = (field, value) => {
         if (field.render) return field.render(value, item);
 
-        // Custom renderer for rating
         if (field.key === "rating") {
-            return value !== null && value !== undefined ? (
+            return value ? (
                 <Rate allowHalf value={value} disabled />
             ) : (
-                <span className="text-gray-400 italic">Not yet rated</span>
+                "Not yet rated"
             );
         }
 
-        if (value === null || value === undefined)
-            return <span className="text-gray-400 italic">Not specified</span>;
-
-        return <span>{value}</span>;
+        return (
+            value ?? <span className="text-gray-400 italic">Not specified</span>
+        );
     };
 
     const getValue = (item, dataIndex) => {
-        if (!item) return undefined;
         if (Array.isArray(dataIndex))
             return dataIndex.reduce((acc, key) => acc?.[key], item);
         return item[dataIndex];
     };
-    const availableActions = Array.isArray(availableAction)
+
+    const availableActionsList = Array.isArray(availableAction)
         ? availableAction
-        : Array.isArray(availableAction?.availableActions)
-        ? availableAction.availableActions
-        : [];
+        : availableAction?.availableActions || [];
+    console.log(availableActionsList);
+
     const availableActionConfig = {
         APPROVE: {
             label: "Approve",
@@ -129,6 +128,12 @@ const JorfDrawer = ({
             icon: <CheckCircleOutlined />,
             color: "green",
         },
+        RETURN: {
+            label: "Return",
+            icon: <CloseCircleOutlined />,
+            color: "red",
+            variant: "solid",
+        },
         CANCEL: {
             label: "Cancel",
             icon: <StopOutlined />,
@@ -145,27 +150,26 @@ const JorfDrawer = ({
 
     return (
         <Drawer
+            open={open}
+            onClose={onClose}
+            placement="right"
+            size={1000}
             title={
-                <div className="flex justify-between items-center gap-2 py-1">
-                    {/* Badges scrollable if many */}
-                    <div className="flex gap-2 flex-nowrap overflow-x-auto">
-                        {headerBadges.map((field) => (
-                            <div
-                                key={field.key}
-                                className="inline-flex items-center px-3 py-1 rounded-full bg-base-200 text-xs font-medium whitespace-nowrap"
+                <div className="flex justify-between items-center">
+                    <div className="flex gap-2 overflow-x-auto">
+                        {headerBadges.map((b) => (
+                            <span
+                                key={b.key}
+                                className="px-3 py-1 bg-base-200 rounded-full text-xs"
                             >
-                                <span className="mr-1 opacity-60">
-                                    {field.label}:
-                                </span>
-                                {field.render
-                                    ? field.render(item[field.dataIndex])
-                                    : item[field.dataIndex] || "N/A"}
-                            </div>
+                                {b.label}:{" "}
+                                {b.render
+                                    ? b.render(item[b.dataIndex])
+                                    : item[b.dataIndex] || "N/A"}
+                            </span>
                         ))}
                     </div>
-
-                    {/* Button always on the right */}
-                    {jorfLogs && jorfLogs.length > 0 && (
+                    {jorfLogs.length > 0 && (
                         <Button
                             size="small"
                             shape="round"
@@ -176,26 +180,46 @@ const JorfDrawer = ({
                     )}
                 </div>
             }
-            placement="right"
-            onClose={onClose}
-            open={open}
-            size={1000}
             footer={
-                availableActions.length > 0 && (
+                availableActionsList.length > 0 && (
                     <Space style={{ float: "right" }}>
-                        {availableActions
-                            .filter((a) => a.toUpperCase() !== "VIEW") // exclude ONLY view
+                        {availableActionsList
+                            .filter((a) => a.toUpperCase() !== "VIEW")
                             .map((a) => {
                                 const key = a.toUpperCase();
                                 const cfg = availableActionConfig[key];
-
                                 return (
                                     <Button
                                         key={key}
                                         icon={cfg?.icon}
                                         color={cfg?.color}
                                         variant={cfg?.variant || "solid"}
+                                        disabled={
+                                            key === "RETURN" && acknowledgeMode
+                                        }
                                         onClick={() => {
+                                            // Step 1: first click on ACKNOWLEDGE → show rating
+                                            if (
+                                                key === "ACKNOWLEDGE" &&
+                                                !acknowledgeMode
+                                            ) {
+                                                setAcknowledgeMode(true);
+                                                return;
+                                            }
+
+                                            // Step 2: require rating before submit
+                                            if (
+                                                key === "ACKNOWLEDGE" &&
+                                                acknowledgeMode &&
+                                                rating === 0
+                                            ) {
+                                                message.warning(
+                                                    "Please provide a rating before acknowledging.",
+                                                );
+                                                return;
+                                            }
+
+                                            // Submit action
                                             action?.({
                                                 action: key,
                                                 item,
@@ -204,11 +228,12 @@ const JorfDrawer = ({
                                                 rating,
                                                 handledBy: employee,
                                             });
+
+                                            setAcknowledgeMode(false);
                                             onClose?.();
                                         }}
                                     >
-                                        {cfg?.label ||
-                                            a.replace(/_/g, " ").toUpperCase()}
+                                        {cfg.label}
                                     </Button>
                                 );
                             })}
@@ -217,20 +242,18 @@ const JorfDrawer = ({
             }
         >
             <div className="space-y-6">
-                {fieldGroups.map((group, groupIndex) => (
-                    <div key={groupIndex}>
+                {/* Render all field groups */}
+                {fieldGroups.map((group, i) => (
+                    <div key={i}>
                         {group.title && (
-                            <>
-                                <h3 className="text-lg font-semibold mb-3">
-                                    {group.title}
-                                </h3>
-                                <Divider className="mt-2 mb-4" />
-                            </>
+                            <h3 className="text-lg font-semibold mb-2">
+                                {group.title}
+                            </h3>
                         )}
+                        <Divider />
                         <Descriptions
                             layout="vertical"
                             column={group.column || 1}
-                            size="middle"
                         >
                             {group.fields.map((field) => (
                                 <Descriptions.Item
@@ -239,7 +262,7 @@ const JorfDrawer = ({
                                 >
                                     {renderFieldValue(
                                         field,
-                                        getValue(item, field.dataIndex)
+                                        getValue(item, field.dataIndex),
                                     )}
                                 </Descriptions.Item>
                             ))}
@@ -247,15 +270,15 @@ const JorfDrawer = ({
                     </div>
                 ))}
 
+                {/* Attachments */}
                 {attachments.length > 0 && (
                     <div>
-                        <h3 className="text-lg font-semibold mb-3">
+                        <h3 className="text-lg font-semibold mb-2">
                             Attachments
                         </h3>
-                        <Divider className="mt-2 mb-4" />
-                        <div className="flex flex-col gap-4">
+                        <Divider />
+                        <div className="flex flex-col gap-3">
                             {attachments.map((file) => {
-                                // Check if file is an image
                                 const isImage =
                                     file.file_type.startsWith("image/");
                                 return (
@@ -269,9 +292,6 @@ const JorfDrawer = ({
                                                 width={50}
                                                 height={50}
                                                 style={{ objectFit: "cover" }}
-                                                preview={{
-                                                    src: file.file_path,
-                                                }}
                                             />
                                         )}
                                         <div>
@@ -295,61 +315,47 @@ const JorfDrawer = ({
                         </div>
                     </div>
                 )}
-                {availableActions.includes("ACKNOWLEDGE") && (
+
+                {/* Rating: only shows if ACKNOWLEDGE clicked */}
+                {acknowledgeMode && (
                     <div className="mt-4">
-                        <h3> Rate your experience</h3>
-                        <Rate
-                            allowHalf
-                            value={rating}
-                            onChange={(value) => setRating(value)}
-                        />
+                        <h3>Rate your experience</h3>
+                        <Rate allowHalf value={rating} onChange={setRating} />
                     </div>
                 )}
 
+                {/* Facilities coordinator fields */}
                 {systemRoles.includes("Facilities_Coordinator") &&
                     ["2", "3"].includes(String(item.status)) && (
                         <div>
                             <Row gutter={16}>
-                                {/* Cost Amount */}
                                 <Col span={12}>
                                     <h3>Cost Amount</h3>
                                     <InputNumber
-                                        className="w-full rounded-lg text-sm mt-2"
+                                        className="w-full rounded-lg mt-2"
                                         placeholder="Enter cost amount..."
                                         value={costAmount}
                                         controls={false}
                                         min={0}
                                         step={1}
-                                        stringMode={false}
-                                        formatter={(value) => {
-                                            if (!value && value !== 0)
-                                                return "";
-                                            const v = value
-                                                .toString()
-                                                .replace(
-                                                    /\B(?=(\d{3})+(?!\d))/g,
-                                                    ","
-                                                );
-                                            return `₱ ${v}`;
-                                        }}
-                                        parser={(value) => {
-                                            if (!value) return 0;
-                                            return value.replace(/[₱,]/g, "");
-                                        }}
-                                        onChange={(value) =>
-                                            setCostAmount(value || 0)
+                                        formatter={(v) =>
+                                            v
+                                                ? `₱ ${v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`
+                                                : ""
                                         }
+                                        parser={(v) =>
+                                            v ? v.replace(/[₱,]/g, "") : 0
+                                        }
+                                        onChange={(v) => setCostAmount(v || 0)}
                                     />
                                 </Col>
-
-                                {/* Facilities Employee */}
                                 <Col span={12}>
                                     <h3>Handler</h3>
                                     <Select
                                         className="w-full mt-2"
                                         placeholder="Select Employee"
                                         value={employee}
-                                        onChange={(value) => setEmployee(value)}
+                                        onChange={setEmployee}
                                         onFocus={fetchFacilitiesEmployee}
                                         showSearch
                                         mode="multiple"
@@ -365,16 +371,16 @@ const JorfDrawer = ({
                         </div>
                     )}
 
-                {availableActions &&
-                    availableActions.length > 0 &&
+                {/* Remarks */}
+                {availableActionsList.length > 0 &&
                     !(
-                        availableActions.length === 1 &&
-                        availableActions[0].toUpperCase() === "VIEW"
+                        availableActionsList.length === 1 &&
+                        availableActionsList[0].toUpperCase() === "VIEW"
                     ) && (
                         <div>
                             <h3>Remarks</h3>
                             <textarea
-                                className="textarea textarea-bordered w-full rounded-lg text-sm resize-y mt-2"
+                                className="textarea textarea-bordered w-full mt-2"
                                 rows={4}
                                 placeholder="Enter remarks..."
                                 value={remarks}
@@ -382,6 +388,7 @@ const JorfDrawer = ({
                             />
                         </div>
                     )}
+
                 <JorfLogsModal
                     open={logsOpen}
                     onClose={() => setLogsOpen(false)}

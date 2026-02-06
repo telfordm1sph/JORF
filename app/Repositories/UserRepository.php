@@ -15,13 +15,13 @@ class UserRepository
     public function isDepartmentHead(string $userId): bool
     {
         try {
-            $result = DB::connection('masterlist')->select("
-                SELECT COUNT(*) as count 
-                FROM employee_masterlist 
-                WHERE ACCSTATUS = 1 AND (APPROVER2 = ? OR APPROVER3 = ?)
-            ", [$userId, $userId]);
 
-            return ($result[0]->count ?? 0) > 0;
+            return Masterlist::where('ACCSTATUS', 1)
+                ->where(function ($query) use ($userId) {
+                    $query->where('APPROVER2', $userId)
+                        ->orWhere('APPROVER3', $userId);
+                })
+                ->exists();
         } catch (\Exception $e) {
             Log::error("Failed to check department head status for user {$userId}: " . $e->getMessage());
             return false;

@@ -41,15 +41,14 @@ const JorfTable = () => {
     const [logsLoading, setLogsLoading] = useState(false);
     const renderValue = (value) =>
         value === null || value === "" ? "-" : value;
-    const {jorfUpdates, clearJorfUpdates} = useNotifications();
+    const { jorfUpdates, clearJorfUpdates } = useNotifications();
     useRealtimeJorfUpdates({ jorfUpdates, clearJorfUpdates });
-
 
     const fetchAttachments = async (jorfId) => {
         try {
             const res = await axios.get(route("jorf.attachments", jorfId));
             const availableActRes = await axios.get(
-                route("jorf.getActions", jorfId)
+                route("jorf.getActions", jorfId),
             );
             setAvailableAction(availableActRes.data.actions || null);
             setAttachments(res.data.attachments || []);
@@ -97,6 +96,7 @@ const JorfTable = () => {
             fetchJorfLogs(selectedItem.jorf_id, logsCurrentPage + 1);
         }
     };
+
     const handleJorfAction = async ({
         action,
         item,
@@ -301,15 +301,17 @@ const JorfTable = () => {
             showTotal: (total, range) =>
                 `Showing ${range[0]}-${range[1]} of ${total} entries`,
         }),
-        [pagination]
+        [pagination],
     );
 
     return (
         <AuthenticatedLayout>
-            {/* Mini status overview cards */}
-            <StatCard stats={statusCounts} activeStatus={statusFilter} />
-
-            {/* Search and filter toolbar */}
+            {/* Mini status overview cards - now clickable */}
+            <StatCard
+                stats={statusCounts}
+                activeStatus={statusFilter}
+                onStatusClick={handleStatusChange}
+            />
 
             {/* Main data table */}
             <Card style={{ marginTop: 16 }}>
@@ -318,7 +320,6 @@ const JorfTable = () => {
                         searchValue={searchValue}
                         onSearch={handleSearch}
                         statusFilter={statusFilter}
-                        onStatusChange={handleStatusChange}
                         statusCounts={statusCounts}
                     />
                 </div>

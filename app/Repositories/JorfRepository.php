@@ -63,60 +63,88 @@ class JorfRepository
         });
     }
 
-    public function getStatusCounts(): array
-    {
-        // Get counts grouped by status
-        $statusCounts = Jorf::groupBy('status')
-            ->selectRaw('status, COUNT(*) as count')
-            ->pluck('count', 'status')
-            ->toArray();
+   public function getStatusCounts(): array
+{
+    // Get counts grouped by status
+    $statusCounts = Jorf::groupBy('status')
+        ->selectRaw('status, COUNT(*) as count')
+        ->pluck('count', 'status')
+        ->toArray();
 
-        $result = [];
+    $result = [];
 
-        // Total of all statuses
-        $total = array_sum($statusCounts);
+    // Total of all statuses
+    $total = array_sum($statusCounts);
 
-        // Add "All" first
-        $result['All'] = [
-            'count' => $total,
-            'color' => 'default', // or any color you want
-        ];
+    // Add "All" first
+    $result['All'] = [
+        'count' => $total,
+        'color' => 'default',
+    ];
 
-        // Add each status based on labels
-        foreach (Status::LABELS as $value => $label) {
-            $result[$label] = [
-                'count' => $statusCounts[$value] ?? 0,
-                'color' => Status::COLORS[$value] ?? 'default',
-            ];
+    // Add each status based on labels, except Canceled and Disapproved
+    foreach (Status::LABELS as $value => $label) {
+        // Skip Canceled (6) and Disapproved (7) as they'll be combined
+        if ($value === 6 || $value === 7) {
+            continue;
         }
-
-        return $result;
-    }
-    public function getStatusCountsFromQuery($query): array
-    {
-        $statusCounts = $query->clone()
-            ->groupBy('status')
-            ->selectRaw('status, COUNT(*) as count')
-            ->pluck('count', 'status')
-            ->toArray();
-
-        $result = [];
-        $total = array_sum($statusCounts);
-
-        $result['All'] = [
-            'count' => $total,
-            'color' => 'default',
+        
+        $result[$label] = [
+            'count' => $statusCounts[$value] ?? 0,
+            'color' => Status::COLORS[$value] ?? 'default',
         ];
-
-        foreach (Status::LABELS as $value => $label) {
-            $result[$label] = [
-                'count' => $statusCounts[$value] ?? 0,
-                'color' => Status::COLORS[$value] ?? 'default',
-            ];
-        }
-
-        return $result;
     }
+
+    // Add combined "Rejected" status (Canceled + Disapproved)
+    $canceledCount = $statusCounts[6] ?? 0;
+    $disapprovedCount = $statusCounts[7] ?? 0;
+    $result['Rejected'] = [
+        'count' => $canceledCount + $disapprovedCount,
+        'color' => 'red', // or use Status::COLORS[6] or Status::COLORS[7]
+    ];
+
+    return $result;
+}
+
+public function getStatusCountsFromQuery($query): array
+{
+    $statusCounts = $query->clone()
+        ->groupBy('status')
+        ->selectRaw('status, COUNT(*) as count')
+        ->pluck('count', 'status')
+        ->toArray();
+
+    $result = [];
+    $total = array_sum($statusCounts);
+
+    $result['All'] = [
+        'count' => $total,
+        'color' => 'default',
+    ];
+
+    // Add each status based on labels, except Canceled and Disapproved
+    foreach (Status::LABELS as $value => $label) {
+        // Skip Canceled (6) and Disapproved (7) as they'll be combined
+        if ($value === 6 || $value === 7) {
+            continue;
+        }
+        
+        $result[$label] = [
+            'count' => $statusCounts[$value] ?? 0,
+            'color' => Status::COLORS[$value] ?? 'default',
+        ];
+    }
+
+    // Add combined "Rejected" status (Canceled + Disapproved)
+    $canceledCount = $statusCounts[6] ?? 0;
+    $disapprovedCount = $statusCounts[7] ?? 0;
+    $result['Rejected'] = [
+        'count' => $canceledCount + $disapprovedCount,
+        'color' => 'red', // or use Status::COLORS[6] or Status::COLORS[7]
+    ];
+
+    return $result;
+}
 
     public function getJorfWithAttachments(int $id)
     {
